@@ -9,12 +9,14 @@ set(CMAKE_BUILD_TYPE "Release")
 set(CGAL_DATA_DIR ".")
 
 find_package(CGAL REQUIRED QUIET OPTIONAL_COMPONENTS Core Qt5)
+include_directories(${CGAL_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
 
-include_directories(${CGAL_INCLUDE_DIRS})
-
-set(EXECUTABLE_NAME "semi-discrete")
-add_executable(${EXECUTABLE_NAME} "semi-discrete.cpp")
+add_library(integration src/integration.cpp)
+add_library(power-diagram src/power-diagram.cpp)
+add_executable(draw-power-diagram src/draw_example.cpp)
 target_link_libraries(
-  ${EXECUTABLE_NAME} ${CGAL_LIBRARIES}
+  draw-power-diagram
+  power-diagram
+  ${CGAL_LIBRARIES}
   CGAL::CGAL_Basic_viewer
 )

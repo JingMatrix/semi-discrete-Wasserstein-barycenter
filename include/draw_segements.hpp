@@ -43,7 +43,7 @@ protected:
 
 // draw function
 template <class Segs>
-void draw(const Segs &segs, const char *title = "Segments Basic Viewer") {
+void draw_segments(const Segs &segs, const char *title = "Segments Basic Viewer") {
   CGAL::Qt::init_ogl_context(4, 3);
   int argc = 1;
   const char *argv[2] = {"segs_viewer", nullptr};
