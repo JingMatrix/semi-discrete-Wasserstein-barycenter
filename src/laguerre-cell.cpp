@@ -1,16 +1,20 @@
 #include "laguerre-cell.hpp"
 #include <CGAL/Polygon_2.h>
+#include <CGAL/draw_polygon_2.h>
 #include <CGAL/intersection_2.h>
 
 double polygon_area(std::list<K::Point_2> pts) {
+  if (pts.size() < 2) {
+    return 0;
+  }
   CGAL::Polygon_2<K> polygon = CGAL::Polygon_2<K>(pts.begin(), pts.end());
   if (not polygon.is_convex()) {
-    std::cerr << "A cell is not convex" << std::endl;
-    std::cerr << "It has vertex: ";
-    for (auto pit = pts.begin(); pit != pts.end(); ++pit) {
-      std::cerr << *pit << "\t";
-    }
-    std::cerr << std::endl;
+    /* std::cerr << "A cell is not convex" << std::endl; */
+    /* std::cerr << "It has vertex: "; */
+    /* for (auto pit = pts.begin(); pit != pts.end(); ++pit) { */
+    /*   std::cerr << *pit << "\t"; */
+    /* } */
+    /* std::cerr << std::endl; */
   }
   return CGAL::to_double(polygon.area());
 };
@@ -65,8 +69,7 @@ void insert_segment(std::list<std::list<K::Point_2>> *chain_list,
       }
       if (s_end == chain_it->front()) {
         if (not inserted) {
-          /* std::cout << "Middle insert to the start of a chain" << std::endl;
-           */
+          /* std::cout << "Middle insert to the start of a chain" << std::endl; */
           chain_it->push_front(s_start);
           inserted = true;
           /* } else { */
@@ -216,51 +219,55 @@ std::list<K::Point_2> cropped_cell_boundary(
     }
   }
 
-  std::list<K::Point_2> actual_cell_boundary = cell_boundary_chain.front();
-  auto chain_to_remove = cell_boundary_chain.begin();
-  cell_boundary_chain.erase(chain_to_remove);
-  auto support_begin = support.begin();
-  auto support_end = support.end();
-  if (hit_support.size() >= 2) {
-    while (cell_boundary_chain.size() > 0) {
-      bool remove_a_chain = false;
-      /* std::cout << "More than one chain to deal with..." << std::endl; */
-      K::Point_2 p_start = actual_cell_boundary.front();
-      K::Point_2 p_end = actual_cell_boundary.back();
-      /* std::cout << "Current chain starts at " << p_start << ", and ends at "
-       */
-      /*           << p_end << std::endl; */
+  if (cell_boundary_chain.size() > 0) {
+    std::list<K::Point_2> actual_cell_boundary = cell_boundary_chain.front();
+    auto chain_to_remove = cell_boundary_chain.begin();
+    cell_boundary_chain.erase(chain_to_remove);
+    auto support_begin = support.begin();
+    auto support_end = support.end();
+    if (hit_support.size() >= 2) {
+      while (cell_boundary_chain.size() > 0) {
+        bool remove_a_chain = false;
+        /* std::cout << "More than one chain to deal with..." << std::endl; */
+        K::Point_2 p_start = actual_cell_boundary.front();
+        K::Point_2 p_end = actual_cell_boundary.back();
+        /* std::cout << "Current chain starts at " << p_start << ", and ends at
+         * "
+         */
+        /*           << p_end << std::endl; */
 
-      for (auto chain_it = cell_boundary_chain.begin();
-           chain_it != cell_boundary_chain.end(); ++chain_it) {
-        if (chain_it->front() == p_end) {
-          /* std::cout << "Merge one chain by adding to current back." */
-          /*           << std::endl; */
-          std::copy(chain_it->begin(), chain_it->end(),
-                    std::back_inserter(actual_cell_boundary));
-          chain_to_remove = chain_it;
-          remove_a_chain = true;
-          break;
+        for (auto chain_it = cell_boundary_chain.begin();
+             chain_it != cell_boundary_chain.end(); ++chain_it) {
+          if (chain_it->front() == p_end) {
+            /* std::cout << "Merge one chain by adding to current back." */
+            /*           << std::endl; */
+            actual_cell_boundary.pop_back();
+            std::copy(chain_it->begin(), chain_it->end(),
+                      std::back_inserter(actual_cell_boundary));
+            chain_to_remove = chain_it;
+            remove_a_chain = true;
+            break;
+          }
         }
-      }
 
-      for (auto chain_it = cell_boundary_chain.begin();
-           chain_it != cell_boundary_chain.end(); ++chain_it) {
-        if (chain_it->back() == p_start) {
-          /* std::cout << "Merge one chain by adding to current front." */
-          /*           << std::endl; */
-          /* I have double of front insertion */
-          chain_it->reverse();
-          std::copy(chain_it->begin(), chain_it->end(),
-                    std::front_inserter(actual_cell_boundary));
-          chain_to_remove = chain_it;
-          remove_a_chain = true;
-          break;
+        for (auto chain_it = cell_boundary_chain.begin();
+             chain_it != cell_boundary_chain.end(); ++chain_it) {
+          if (chain_it->back() == p_start) {
+            /* std::cout << "Merge one chain by adding to current front." */
+            /*           << std::endl; */
+            /* I have double of front insertion */
+            actual_cell_boundary.pop_front();
+            chain_it->reverse();
+            std::copy(chain_it->begin(), chain_it->end(),
+                      std::front_inserter(actual_cell_boundary));
+            chain_to_remove = chain_it;
+            remove_a_chain = true;
+            break;
+          }
         }
-      }
-      if (not remove_a_chain) {
-        if (cell_boundary_chain.size() == 1 && hit_support.size() == 4) {
-          /* A simple work around */
+        if (not remove_a_chain && cell_boundary_chain.size() == 1 &&
+            hit_support.size() == 4) {
+          /* If we have only two chains to remove. */
           for (auto sit = std::find(support_begin, support_end,
                                     hit_support[actual_cell_boundary.back()]);
                sit != support_end; ++sit) {
@@ -319,62 +326,80 @@ std::list<K::Point_2> cropped_cell_boundary(
             }
           }
         }
-      }
-      if (not remove_a_chain) {
-        std::cerr << "No chain can be removed naively." << std::endl;
-        std::cerr << "Current chain has " << actual_cell_boundary.size()
-                  << " vetex, with front " << actual_cell_boundary.front()
-                  << " and back " << actual_cell_boundary.back() << std::endl;
-        std::cerr << "We have " << hit_support.size()
-                  << " intersections with the support." << std::endl;
-        std::cerr << "It remains " << cell_boundary_chain.size()
-                  << " chains to proceed." << std::endl;
-        break;
-      } else {
-        cell_boundary_chain.erase(chain_to_remove);
-      }
-    }
 
-    if (cell_boundary_chain.size() == 0) {
-      K::Point_2 p_start = actual_cell_boundary.front();
-      K::Point_2 p_end = actual_cell_boundary.back();
-      K::Segment_2 boundary_start = hit_support[p_start];
-      K::Segment_2 boundary_end = hit_support[p_end];
-
-      bool boundary_meet = boundary_start == boundary_end;
-
-      if (not boundary_meet) {
-        /* We need to vetex of the support into our boundary */
-        for (auto sit = std::find(support_begin, support_end, boundary_end);
-             sit != support_end; ++sit) {
-          /* std::cout << "Test " << *sit << " in the support forward with " <<
-           * boundary_start */
-          /*           << std::endl; */
-          if (*sit != boundary_start) {
-            actual_cell_boundary.push_back(sit->end());
-            /* std::cout << "Insert " << sit->end() << std::endl; */
-          } else {
-            boundary_meet = true;
+        if (not remove_a_chain) {
+          if (hit_support.size() == 2) {
+            /* Another chain is a sub-chian of current chain */
             break;
+          }
+          std::cerr << "No chain can be removed naively." << std::endl;
+          CGAL::Polygon_2<K> p = CGAL::Polygon_2<K>(
+              actual_cell_boundary.begin(), actual_cell_boundary.end());
+          std::cerr << "Current chain has " << actual_cell_boundary.size()
+                    << " vetex, they are: " << std::endl;
+          for (auto pit = actual_cell_boundary.begin();
+               pit != actual_cell_boundary.end(); ++pit) {
+            std::cerr << *pit << std::endl;
+          }
+          std::cerr << "We have " << hit_support.size()
+                    << " intersections with the support." << std::endl;
+          std::cerr << "It remains " << cell_boundary_chain.size()
+                    << " chains to proceed. They have size ";
+          for (auto chain_it = cell_boundary_chain.begin();
+               chain_it != cell_boundary_chain.end(); ++chain_it) {
+            std::cerr << chain_it->size() << ", ";
+          }
+          std::cerr << "\b\b" << std::endl;
+          CGAL::draw(p);
+          break;
+        } else {
+          cell_boundary_chain.erase(chain_to_remove);
+        }
+      }
+
+      if (cell_boundary_chain.size() == 0) {
+        K::Point_2 p_start = actual_cell_boundary.front();
+        K::Point_2 p_end = actual_cell_boundary.back();
+        K::Segment_2 boundary_start = hit_support[p_start];
+        K::Segment_2 boundary_end = hit_support[p_end];
+
+        bool boundary_meet = boundary_start == boundary_end;
+
+        if (not boundary_meet) {
+          /* We need to  add vertex of the support into our boundary */
+          for (auto sit = std::find(support_begin, support_end, boundary_end);
+               sit != support_end; ++sit) {
+            /* std::cout << "Test " << *sit << " in the support forward with "
+             * << boundary_start */
+            /*           << std::endl; */
+            if (*sit != boundary_start) {
+              actual_cell_boundary.push_back(sit->end());
+              /* std::cout << "Insert " << sit->end() << std::endl; */
+            } else {
+              boundary_meet = true;
+              break;
+            }
+          }
+        }
+        if (not boundary_meet) {
+          for (auto sit = std::find(support_begin, support_end, boundary_start);
+               sit != support_begin; --sit) {
+            /* std::cout << "Test " << *sit << " in the support backward with "
+             */
+            /*           << boundary_end << std::endl; */
+            if (*sit != boundary_end) {
+              actual_cell_boundary.push_front(sit->start());
+              /* std::cout << "Insert " << sit->start() << std::endl; */
+            } else {
+              boundary_meet = true;
+              break;
+            }
           }
         }
       }
-      if (not boundary_meet) {
-        for (auto sit = std::find(support_begin, support_end, boundary_start);
-             sit != support_begin; --sit) {
-          /* std::cout << "Test " << *sit << " in the support backward with " */
-          /*           << boundary_end << std::endl; */
-          if (*sit != boundary_end) {
-            actual_cell_boundary.push_front(sit->start());
-            /* std::cout << "Insert " << sit->start() << std::endl; */
-          } else {
-            boundary_meet = true;
-            break;
-          }
-        }
-      }
     }
+    return actual_cell_boundary;
+  } else {
+    return std::list<K::Point_2>{K::Point_2(0, 0)};
   }
-
-  return actual_cell_boundary;
 }

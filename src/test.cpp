@@ -5,6 +5,8 @@ int main() {
   std::list<K::Point_2> bbox = {K::Point_2(0, 0), K::Point_2(1, 0),
                                 K::Point_2(1, 1), K::Point_2(0, 1)};
 
+  CGAL::IO::set_pretty_mode(std::cout);
+  CGAL::IO::set_pretty_mode(std::cerr);
   auto rt = triangulation_from_data("data/weight_points");
   auto pd = generate_power_diagram(rt);
   Integral_power_diagram data_area = area(pd, bbox);
