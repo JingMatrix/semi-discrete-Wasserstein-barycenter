@@ -6,9 +6,9 @@ Integral_power_diagram area(Power_diagram &pd,
   Integral_power_diagram area_pd;
   for (auto pit = pd.begin(); pit != pd.end(); ++pit) {
     std::vector<K::Segment_2> acutal_spoort;
-    CGAL::IO::set_pretty_mode(std::cout);
-    CGAL::IO::set_pretty_mode(std::cerr);
-    std::cout << std::endl<< "Calculating area for " << pit->first << "..." << std::endl;
+    /* CGAL::IO::set_pretty_mode(std::cout); */
+    /* CGAL::IO::set_pretty_mode(std::cerr); */
+    /* std::cout << std::endl<< "Calculating area for " << pit->first << "..." << std::endl; */
     double cell_area =
         polygon_area(cropped_cell_boundary(pit->second, support_vertex));
     area_pd.insert({pit->first, cell_area});
