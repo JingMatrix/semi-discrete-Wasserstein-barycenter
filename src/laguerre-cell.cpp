@@ -4,15 +4,15 @@
 
 double polygon_area(std::list<K::Point_2> pts) {
   CGAL::Polygon_2<K> polygon = CGAL::Polygon_2<K>(pts.begin(), pts.end());
-  /* if (not polygon.is_convex()) { */
-  /*   std::cerr << "A cell is not convex" << std::endl; */
-  /*   std::cerr << "It has vertex: "; */
-  /*   for (auto pit = pts.begin(); pit != pts.end(); ++pit) { */
-  /*     std::cerr << *pit << "\t"; */
-  /*   } */
-  /*   std::cerr << std::endl; */
-  /* } */
-  return polygon.area();
+  if (not polygon.is_convex()) {
+    std::cerr << "A cell is not convex" << std::endl;
+    std::cerr << "It has vertex: ";
+    for (auto pit = pts.begin(); pit != pts.end(); ++pit) {
+      std::cerr << *pit << "\t";
+    }
+    std::cerr << std::endl;
+  }
+  return CGAL::to_double(polygon.area());
 };
 
 void insert_segment(std::list<std::list<K::Point_2>> *chain_list,
@@ -85,11 +85,11 @@ void insert_segment(std::list<std::list<K::Point_2>> *chain_list,
 }
 
 std::list<K::Point_2> cropped_cell_boundary(
-    std::vector<std::pair<CGAL::Object, CGAL::Orientation>> &pd_edges,
+    std::list<std::pair<CGAL::Object, CGAL::Orientation>> &pd_edges,
     std::list<K::Point_2> &support_vertex) {
 
   std::list<std::list<K::Point_2>> cell_boundary_chain;
-  std::unordered_map<K::Point_2, K::Segment_2> hit_support;
+  std::map<K::Point_2, K::Segment_2> hit_support;
   CGAL::Polygon_2<K> support_polygon =
       CGAL::Polygon_2<K>(support_vertex.begin(), support_vertex.end());
   std::list<K::Segment_2> support{support_polygon.edges_begin(),

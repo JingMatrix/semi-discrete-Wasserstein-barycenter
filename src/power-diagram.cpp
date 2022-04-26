@@ -65,24 +65,27 @@ Power_diagram generate_power_diagram(Regular_triangulation &rt) {
       /* We cannot require counter-clock orientation for rays, otherwise */
       /* we will have wrong information about the intersection with */
       /* possible boundaries to be imposed in the future. */
-      dual_edges[0] = std::pair<CGAL::Object, CGAL::Orientation>{
-          CGAL::make_object(K::Ray_2(dual_graph[f], directional_vec)),
-          /* rt.dual(eit), */
-          CGAL::COUNTERCLOCKWISE};
-      dual_edges[1] = std::pair<CGAL::Object, CGAL::Orientation>{
-          CGAL::make_object(K::Ray_2(dual_graph[f], directional_vec)),
-          /* rt.dual(eit), */
-          CGAL::CLOCKWISE};
+      CGAL::Object o_ray =
+          CGAL::make_object(K::Ray_2(dual_graph[f], directional_vec));
+      dual_edges[0] =
+          std::pair<CGAL::Object, CGAL::Orientation>{o_ray,
+                                                     /* rt.dual(eit), */
+                                                     CGAL::COUNTERCLOCKWISE};
+      dual_edges[1] =
+          std::pair<CGAL::Object, CGAL::Orientation>{o_ray,
+                                                     /* rt.dual(eit), */
+                                                     CGAL::CLOCKWISE};
     }
 
+    /* not working with exact kernel, no reason? */
+
     for (int j : {0, 1}) {
-      if (pd_detail.contains(endpoints[j])) {
+      if (pd_detail.count(endpoints[j]) > 0) {
         pd_detail[endpoints[j]].push_back(dual_edges[j]);
       } else {
-        pd_detail.insert(
-            {endpoints[j],
-             std::vector<std::pair<CGAL::Object, CGAL::Orientation>>{
-                 dual_edges[j]}});
+        pd_detail.insert({endpoints[j],
+                          std::list<std::pair<CGAL::Object, CGAL::Orientation>>{
+                              dual_edges[j]}});
       }
     }
   }

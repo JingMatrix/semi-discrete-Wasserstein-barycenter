@@ -2,9 +2,9 @@
 import random
 import sys
 file = open(sys.path[0] + "/weight_points", "w")
-for i in range(0, 20):
-    file.write(str(random.uniform(0, 0.8)) + "\t" +
-               str(random.uniform(0.2, 0.8)) + "\t" +
+for i in range(0, 83):
+    file.write(str(random.uniform(0.1, 0.8)) + "\t" +
+               str(random.uniform(0.1, 0.8)) + "\t" +
                # str(random.uniform(0, 0.3)) + "\n"
                "0\n"
                )

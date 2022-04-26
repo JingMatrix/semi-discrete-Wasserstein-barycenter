@@ -3,8 +3,7 @@
 
 int main() {
   std::list<K::Point_2> bbox = {K::Point_2(0, 0), K::Point_2(1, 0),
-                                K::Point_2(1, 1), K::Point_2(0.5, 1.5),
-                                K::Point_2(0, 1)};
+                                K::Point_2(1, 1), K::Point_2(0, 1)};
 
   auto rt = triangulation_from_data("data/weight_points");
   auto pd = generate_power_diagram(rt);
