@@ -14,9 +14,10 @@ set(CMAKE_BUILD_TYPE "Debug")
 set(CGAL_DATA_DIR ".")
 
 find_package(CGAL REQUIRED QUIET OPTIONAL_COMPONENTS Core Qt5)
-find_package(GSL)
+find_package(GSL REQUIRED)
+find_package(GLPK)
 include_directories(
-  ${CGAL_INCLUDE_DIRS} ${GSL_INCLUDE_DIRS}
+  ${CGAL_INCLUDE_DIRS} ${GSL_INCLUDE_DIRS} ${GLPK_INCLUDE_DIRS}
   ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src
 )
 
@@ -25,7 +26,13 @@ add_library(integration src/integration.cpp src/laguerre-cell.cpp)
 
 add_executable(draw-power-diagram src/draw_example.cpp)
 add_executable(test src/test.cpp)
+add_executable(semi-discrete src/semi-discrete.cpp)
 
+target_link_libraries(
+  semi-discrete
+  power-diagram
+  ${GLPK_LIBRARIES}
+)
 target_link_libraries(
   integration
   power-diagram ${GSL_LIBRARIES}
