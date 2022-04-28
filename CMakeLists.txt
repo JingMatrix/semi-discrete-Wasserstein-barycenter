@@ -30,7 +30,7 @@ add_executable(semi-discrete src/semi-discrete.cpp)
 
 target_link_libraries(
   semi-discrete
-  power-diagram
+  integration
   ${GLPK_LIBRARIES}
 )
 target_link_libraries(
@@ -40,12 +40,14 @@ target_link_libraries(
 target_link_libraries(
   draw-power-diagram
   power-diagram
-  ${CGAL_LIBRARIES}
   CGAL::CGAL_Basic_viewer
 )
 target_link_libraries(
   test
   integration
+  power-diagram
+)
+target_link_libraries(
   power-diagram
   ${CGAL_LIBRARIES}
 )
