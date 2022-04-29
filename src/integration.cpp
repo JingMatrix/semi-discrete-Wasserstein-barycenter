@@ -1,19 +1,21 @@
-#include "integration.hpp"
-#include "laguerre-cell.hpp"
+#include "power-diagram.hpp"
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_monte_miser.h>
 
-Integral_power_diagram area(Power_diagram &pd,
-                            std::list<K::Point_2> &support_vertex) {
-  Integral_power_diagram area_pd;
-  for (auto pit = pd.begin(); pit != pd.end(); ++pit) {
-    /* std::cout << std::endl<< "Calculating area for " << pit->first << "..." << std::endl; */
-    double cell_area =
-        polygon_area(cropped_cell_boundary(pit->second, support_vertex));
-    area_pd.insert({pit->first, cell_area});
+PowerDiagram::vertex_with_data PowerDiagram::area() {
+  vertex_with_data area;
+  if (not is_cropped) {
+    std::cerr << "Power diagram not cropped, please use crop method fisrt."
+              << std::endl;
+  } else {
+    for (auto cc : cropped_cell) {
+      area.insert({cc.first, polygon_area(cc.second)});
+    }
   }
-  return area_pd;
+  return area;
 }
 
-Integral_power_diagram integral(Power_diagram &pd, gsl_monte_function &f) {
-  Integral_power_diagram integral_pd;
-  return integral_pd;
+PowerDiagram::vertex_with_data PowerDiagram::integral(gsl_monte_function &f) {
+  vertex_with_data integral;
+  return integral;
 };

@@ -1,5 +1,5 @@
-#include "draw_segements.hpp"
 #include "power-diagram.hpp"
+#include "draw_segements.hpp"
 #include <CGAL/draw_triangulation_2.h>
 
 class Cropped_power_diagram {
@@ -30,34 +30,19 @@ public:
 };
 
 int main() {
-  Regular_triangulation rt = triangulation_from_data("data/weight_points");
+  PowerDiagram pd("data/weight_points");
 
   std::cout << "number of vertices :  ";
-  std::cout << rt.number_of_vertices() << std::endl;
+  std::cout << pd.number_of_vertices() << std::endl;
   std::cout << "number of hidden vertices :  ";
-  std::cout << rt.number_of_hidden_vertices() << std::endl;
+  std::cout << pd.number_of_hidden_vertices() << std::endl;
 
   // construct a rectangle
   K::Iso_rectangle_2 bbox(0, 0, 1, 1);
   Cropped_power_diagram cropped_power_diagram(bbox);
   // extract the cropped Power diagram
-  rt.draw_dual(cropped_power_diagram);
+  pd.draw_dual(cropped_power_diagram);
   draw_segments<std::vector<K::Segment_2>>(cropped_power_diagram.cropped_pd);
-
-  /* Cropped_power_diagram myver(bbox); */
-  /* Power_diagram pd = generate_power_diagram(rt); */
-  /* K::Segment_2 s; */
-  /* K::Ray_2 r; */
-  /* for (auto pdit = pd.begin(); pdit != pd.end(); ++pdit) { */
-  /*   for (auto eit = pdit->second.begin(); eit != pdit->second.end(); ++eit) { */
-  /*     auto o = eit->first; */
-  /*     if (CGAL::assign(s, o)) */
-  /*       myver << s; */
-  /*     if (CGAL::assign(r, o)) */
-  /*       myver << r; */
-  /*   } */
-  /* } */
-  /* draw_segments<std::vector<K::Segment_2>>(myver.cropped_pd); */
 
   return 0;
 }

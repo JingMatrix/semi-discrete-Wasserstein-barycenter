@@ -1,11 +1,11 @@
-#include "integration.hpp"
+#include "power-diagram.hpp"
 #include <boost/algorithm/string.hpp>
 #include <glpk.h>
 
 typedef std::vector<std::vector<std::pair<K::Point_2, double>>> marginals;
 
-Power_diagram wasserstein_barycenter(std::list<K::Point_2> support_vertex,
-                                     marginals margs, std::list<double> coefs) {
+PowerDiagram wasserstein_barycenter(std::list<K::Point_2> support_vertex,
+                                    marginals margs, std::list<double> coefs) {
 
   const int n_marginal = margs.size();
   if (n_marginal + 1 != coefs.size()) {
@@ -48,7 +48,7 @@ Power_diagram wasserstein_barycenter(std::list<K::Point_2> support_vertex,
 
   /* We present the solution as potential attached to support points. */
   /* It helps to construst the triangulization. */
-  std::vector<Regular_triangulation::Weighted_point> zero_potential;
+  std::vector<PowerDiagram::vertex> zero_potential;
   std::vector<double> lp_sol;
   /* Constraint matrix, it has size of n_entries,  a sparse matrix. */
   int n_entries = n_column_variables * n_marginal;
@@ -103,8 +103,7 @@ Power_diagram wasserstein_barycenter(std::list<K::Point_2> support_vertex,
       y /= (1 - coefs.front());
       /* std::cout << "Insert point " << x << ", " << y << std::endl; */
       lp_sol.push_back(p);
-      zero_potential.push_back(
-          Regular_triangulation::Weighted_point(K::Point_2(x, y), 0));
+      zero_potential.push_back(PowerDiagram::vertex(K::Point_2(x, y), 0));
       /* We order solution in the reverse dict order. */
       /* It doesn't matter how we order it at all since we deal the constraint
        * matrix at the same time. */
@@ -126,17 +125,16 @@ Power_diagram wasserstein_barycenter(std::list<K::Point_2> support_vertex,
 
   glp_load_matrix(lp, n_entries, ia, ja, ar);
 
-  Regular_triangulation rt(zero_potential.begin(), zero_potential.end());
-  Power_diagram pd = generate_power_diagram(rt);
-  Integral_power_diagram lag = area(pd, support_vertex);
+  PowerDiagram pd(zero_potential.begin(), zero_potential.end());
+  pd.crop(support_vertex);
+  auto lag = pd.area();
 
   glp_term_out(GLP_OFF);
   double step_size = 0.01;
-  for (int j = 0; j < 20; j++) {
-    /* step_size = step_size / (j + 1); */
+  for (int j = 0; j < 10; j++) {
     std::list<int> removed_row;
     double sum_error = 0;
-    std::vector<Regular_triangulation::Weighted_point> new_potential;
+    std::vector<PowerDiagram::vertex> new_potential;
     /* if (lag.size() != n_column_variables) { */
     /*   std::cerr << std::endl */
     /*             << "Failure while removing inactive support point." */
@@ -144,7 +142,10 @@ Power_diagram wasserstein_barycenter(std::list<K::Point_2> support_vertex,
     /*             << " column variables, but only get " << lag.size() << "." */
     /*             << std::endl; */
     /* } */
-    /* std::cout << "With the lp solution and potential: "; */
+    std::cout << std::endl
+              << "In turn " << j
+              << ", (lp, potential, area, error = area - lp, point) are :"
+              << std::endl;
     for (int i = 0; i < n_column_variables; i++) {
       double error = lag[zero_potential[i]] - lp_sol[i];
       sum_error += std::abs(error);
@@ -155,28 +156,27 @@ Power_diagram wasserstein_barycenter(std::list<K::Point_2> support_vertex,
         removed_row.push_back(i);
         glp_set_obj_coef(lp, i + 1, 0);
       } else {
-        /* std::cout << "(" << lp_sol[i] << ", " << lag[zero_potential[i]] */
-        /*           << "), "; */
         if (not lag.contains(zero_potential[i])) {
           std::cout << "No area found for " << zero_potential[i];
           std::exit(EXIT_FAILURE);
         }
 
-        glp_set_obj_coef(lp, i + 1, step_size * error);
         /* if (lag[zero_potential[i]] == 0) { */
         /*   std::cout << std::endl */
         /*             << "The area for a cell of " << zero_potential[i] */
         /* << " at index " << i */
         /*             << " is zero, need debug." << std::endl; */
         /* } */
-        zero_potential[i] = Regular_triangulation::Weighted_point(
-            zero_potential[i].point(), step_size * error);
+        std::cout << "(" << lp_sol[i] << ",\t" << zero_potential[i].weight()
+                  << ",\t" << lag[zero_potential[i]] << ",\t" << error << ",\t"
+                  << zero_potential[i].point() << ")" << std::endl;
+        zero_potential[i] = PowerDiagram::vertex(zero_potential[i].point(),
+                                                 zero_potential[i].weight() +
+                                                     step_size * error);
         new_potential.push_back(zero_potential[i]);
+        glp_set_obj_coef(lp, i + 1, zero_potential[i].weight());
       }
     }
-    std::cout << std::endl
-              << "In the turn " << j << ", we get error: " << sum_error
-              << std::endl;
     if (removed_row.size() > 0) {
       std::cout << "We remove " << removed_row.size()
                 << " points from the support." << std::endl;
@@ -184,32 +184,45 @@ Power_diagram wasserstein_barycenter(std::list<K::Point_2> support_vertex,
       for (int i : removed_row) {
         std::cout << i + 1 << ", ";
       }
+      std::cout << "\b\b." << std::endl;
     }
-    std::cout << "\b\b" << std::endl;
-    Regular_triangulation new_rt(new_potential.begin(), new_potential.end());
-    pd = generate_power_diagram(new_rt);
-    lag = area(pd, support_vertex);
+    pd = PowerDiagram(new_potential.begin(), new_potential.end());
+    pd.crop(support_vertex);
+    lag = pd.area();
+    K::Iso_rectangle_2 bbox(0, 0, 1, 1);
     std::cout << "Calculate power diagram with " << new_potential.size()
-              << " points, return " << lag.size() << " area data." << std::endl;
+              << " points, return " << lag.size() << " area data."
+              << " We have " << pd.number_of_hidden_vertices()
+              << " vertex hidden." << std::endl;
     /* std::cout << std::endl << "We dump them out as :" << std::endl; */
     /* for (auto a = lag.begin(); a != lag.end(); ++a) { */
     /*   std::cout << a->first << ", " << a->second << std::endl; */
     /* } */
+    bool adjust_step_size = false;
     for (auto a = lag.begin(); a != lag.end(); ++a) {
       if (a->second == 0) {
-        std::cout << "From the pwoer diagram result, the point " << a->first
-                  << " have zero area, need debug." << std::endl;
+        std::cout << "From the power diagram result, the point " << a->first
+                  << " have zero area, should adjust the step-size."
+                  << std::endl;
+        adjust_step_size = true;
+        /* std::exit(EXIT_FAILURE); */
       }
     }
+    pd.gnuplot();
     /* for (int i : removed_row) { */
     /*   lag.insert({zero_potential[i], 0}); */
     /* } */
     glp_simplex(lp, NULL);
-    if (j < 3) {
-      for (int i = 0; i < n_column_variables; i++) {
-        lp_sol[i] = glp_get_col_prim(lp, i + 1);
-      }
+    /* if (j < 3) { */
+    for (int i = 0; i < n_column_variables; i++) {
+      lp_sol[i] = glp_get_col_prim(lp, i + 1);
     }
+    if (adjust_step_size) {
+      std::cout << "Please input a new step-size: ";
+      std::cin >> step_size;
+      std::cout << std::endl;
+    }
+    /* } */
   }
 
   /* glp_print_sol(lp, "data/lp_solution"); */
@@ -310,5 +323,5 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  Power_diagram sol = wasserstein_barycenter(support_vertex, margs, coefs);
+  PowerDiagram sol = wasserstein_barycenter(support_vertex, margs, coefs);
 }

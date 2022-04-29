@@ -21,21 +21,23 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src
 )
 
-add_library(power-diagram src/power-diagram.cpp)
-add_library(integration src/integration.cpp src/laguerre-cell.cpp)
+add_library(
+  power-diagram
+  src/power-diagram.cpp
+  src/integration.cpp
+  src/crop-cell.cpp
+  src/crop.cpp
+  src/draw.cpp
+)
 
-add_executable(draw-power-diagram src/draw_example.cpp)
+add_executable(draw-power-diagram src/qt_draw_example.cpp)
 add_executable(test src/test.cpp)
 add_executable(semi-discrete src/semi-discrete.cpp)
 
 target_link_libraries(
   semi-discrete
-  integration
+  power-diagram
   ${GLPK_LIBRARIES}
-)
-target_link_libraries(
-  integration
-  power-diagram ${GSL_LIBRARIES}
 )
 target_link_libraries(
   draw-power-diagram
@@ -44,7 +46,6 @@ target_link_libraries(
 )
 target_link_libraries(
   test
-  integration
   power-diagram
 )
 target_link_libraries(

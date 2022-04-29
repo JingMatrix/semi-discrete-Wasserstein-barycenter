@@ -1,13 +1,17 @@
-#include "laguerre-cell.hpp"
-#include <CGAL/Polygon_2.h>
-#include <CGAL/draw_polygon_2.h>
-#include <CGAL/intersection_2.h>
+#include "power-diagram.hpp"
+/* #include <CGAL/draw_polygon_2.h> */
 
-double polygon_area(std::list<K::Point_2> pts) {
-  if (pts.size() < 2) {
+double PowerDiagram::polygon_area(chain c) {
+  if (c.size() < 2) {
+    std::cout << "Get invalid boundary with only " << c.size() << " points."
+              << " They are: ";
+    for (auto p : c) {
+      std::cout << p << ", ";
+    }
+    std::cout << "\b\b." << std::endl;
     return 0;
   }
-  CGAL::Polygon_2<K> polygon = CGAL::Polygon_2<K>(pts.begin(), pts.end());
+  CGAL::Polygon_2<K> polygon = CGAL::Polygon_2<K>(c.begin(), c.end());
   if (not polygon.is_convex()) {
     /* std::cerr << "A cell is not convex" << std::endl; */
     /* std::cerr << "It has vertex: "; */
@@ -19,15 +23,17 @@ double polygon_area(std::list<K::Point_2> pts) {
   return CGAL::to_double(polygon.area());
 };
 
-void insert_segment(std::list<std::list<K::Point_2>> *chain_list,
-                    K::Segment_2 seg, enum INSERT_POS insert_pos) {
+void PowerDiagram::insert_segment(std::list<chain> *chain_list,
+                                  K::Segment_2 seg,
+                                  enum INSERT_POS insert_pos) {
   if (seg.squared_length() < 10e-16 || seg.squared_length() > 10e16) {
     /* Inexact kernel may have errors. */
     /* std::cout << "Ignoring " << seg << " due to rounding error." <<
      * std::endl; */
     return;
   }
-  /* std::cout << "Inserting " << seg << " at pos " << insert_pos << std::endl; */
+  /* std::cout << "Inserting " << seg << " at pos " << insert_pos << std::endl;
+   */
   K::Point_2 s_start = seg.start();
   K::Point_2 s_end = seg.end();
   bool inserted = false;
@@ -69,7 +75,8 @@ void insert_segment(std::list<std::list<K::Point_2>> *chain_list,
       }
       if (s_end == chain_it->front()) {
         if (not inserted) {
-          /* std::cout << "Middle insert to the start of a chain" << std::endl; */
+          /* std::cout << "Middle insert to the start of a chain" << std::endl;
+           */
           chain_it->push_front(s_start);
           inserted = true;
           /* } else { */
@@ -85,16 +92,16 @@ void insert_segment(std::list<std::list<K::Point_2>> *chain_list,
     /* std::cout << "Add a new chain to current boundary." << std::endl; */
     chain_list->push_back(new_chain);
   }
+  cropped_edges.insert(seg);
 }
 
-std::list<K::Point_2> cropped_cell_boundary(
-    std::list<std::pair<CGAL::Object, CGAL::Orientation>> &pd_edges,
-    std::list<K::Point_2> &support_vertex) {
+PowerDiagram::chain PowerDiagram::cropped_cell_boundary(face &face,
+                                                        chain &support_chain) {
 
-  std::list<std::list<K::Point_2>> cell_boundary_chain;
+  std::list<chain> cell_boundary_chain;
   std::map<K::Point_2, K::Segment_2> hit_support;
   CGAL::Polygon_2<K> support_polygon =
-      CGAL::Polygon_2<K>(support_vertex.begin(), support_vertex.end());
+      CGAL::Polygon_2<K>(support_chain.begin(), support_chain.end());
   std::list<K::Segment_2> support{support_polygon.edges_begin(),
                                   support_polygon.edges_end()};
 
@@ -105,7 +112,7 @@ std::list<K::Point_2> cropped_cell_boundary(
   /* for intersection */
   /* p will be the intersection point */
   K::Point_2 p;
-  for (auto eit = pd_edges.begin(); eit != pd_edges.end(); ++eit) {
+  for (auto eit = face.begin(); eit != face.end(); ++eit) {
 
     enum INSERT_POS insert_pos = middle;
     std::vector<K::Segment_2> intersect_segs;
@@ -220,7 +227,7 @@ std::list<K::Point_2> cropped_cell_boundary(
   }
 
   if (cell_boundary_chain.size() > 0) {
-    std::list<K::Point_2> actual_cell_boundary = cell_boundary_chain.front();
+    chain actual_cell_boundary = cell_boundary_chain.front();
     auto chain_to_remove = cell_boundary_chain.begin();
     cell_boundary_chain.erase(chain_to_remove);
     auto support_begin = support.begin();
@@ -350,7 +357,7 @@ std::list<K::Point_2> cropped_cell_boundary(
             std::cerr << chain_it->size() << ", ";
           }
           std::cerr << "\b\b" << std::endl;
-          CGAL::draw(p);
+          /* CGAL::draw(p); */
           break;
         } else {
           cell_boundary_chain.erase(chain_to_remove);
@@ -400,6 +407,6 @@ std::list<K::Point_2> cropped_cell_boundary(
     }
     return actual_cell_boundary;
   } else {
-    return std::list<K::Point_2>{K::Point_2(0, 0)};
+    return chain{K::Point_2(0, 0)};
   }
 }

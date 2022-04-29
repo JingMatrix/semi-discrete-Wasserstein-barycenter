@@ -1,3 +1,7 @@
 #include "power-diagram.hpp"
 
-class laguerre_cell {};
+void PowerDiagram::crop(K::Iso_rectangle_2 bbox) {}
+
+void PowerDiagram::crop(chain support_chain) {}
+
+void PowerDiagram::crop(CGAL::Polygon_2<K> support) {}
