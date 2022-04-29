@@ -5,10 +5,18 @@ void PowerDiagram::plot_mma() {
     std::cerr << "Power diagram not cropped, please use crop method fisrt."
               << std::endl;
   } else {
+    std::list<polygon> polygon_to_draw{cropped_shape};
+    for (auto cell : cropped_cells) {
+      polygon_to_draw.push_back(cell.second);
+    }
     std::cout << "Graphics[{";
-    for (auto e : cropped_edges) {
-      std::cout << "Line[{{" << (e.start()).x() << ", " << (e.start()).y()
-                << "}, {" << (e.end()).x() << ", " << (e.end()).y() << "}}], ";
+    for (auto poly : polygon_to_draw) {
+      for (auto eit = poly.edges_begin(); eit != poly.edges_end(); ++eit) {
+        auto e = *eit;
+        std::cout << "Line[{{" << (e.start()).x() << ", " << (e.start()).y()
+                  << "}, {" << (e.end()).x() << ", " << (e.end()).y()
+                  << "}}], ";
+      }
     }
     std::cout << "\b\b"
               << "}]" << std::endl;
@@ -21,8 +29,14 @@ void PowerDiagram::gnuplot() {
               << std::endl;
   } else {
     std::ofstream data("data/pd_lines");
-    for (auto seg : cropped_edges) {
-      data << seg.source() << " " << seg.to_vector() << std::endl;
+    std::list<polygon> polygon_to_draw{cropped_shape};
+    for (auto cell : cropped_cells) {
+      polygon_to_draw.push_back(cell.second);
+    }
+    for (auto poly : polygon_to_draw) {
+      for (auto eit = poly.edges_begin(); eit != poly.edges_end(); ++eit) {
+        data << eit->source() << " " << eit->to_vector() << std::endl;
+      }
     }
     std::ofstream cmd("data/gnu_plot");
     cmd << "#! gnuplot -p" << std::endl

@@ -1,12 +1,20 @@
 #pragma once
 
+#ifdef USE_EXACT_KERNEL
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+#else
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#endif
 
 #include <CGAL/Polygon_2.h>
 #include <CGAL/Regular_triangulation_2.h>
 #include <gsl/gsl_monte.h>
 
+#ifdef USE_EXACT_KERNEL
+typedef CGAL::Exact_predicates_exact_constructions_kernel K;
+#else
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+#endif
 
 class PowerDiagram {
 public:
@@ -14,7 +22,8 @@ public:
   typedef Regular_triangulation::Weighted_point vertex;
   typedef std::pair<CGAL::Object, CGAL::Orientation> edge;
   typedef std::list<edge> face;
-#ifdef CGAL_EXACT_PREDICATES_EXACT_CONSTRUCTIONS_KERNEL_H
+  typedef CGAL::Polygon_2<K> polygon;
+#ifdef USE_EXACT_KERNEL
   typedef std::map<vertex, double> vertex_with_data;
 #else
   typedef std::unordered_map<vertex, double> vertex_with_data;
@@ -24,25 +33,24 @@ public:
 private:
   void generate_power_diagram(Regular_triangulation &rt);
   Regular_triangulation dual_rt;
-  CGAL::Polygon_2<K> cropped_shape;
+  polygon cropped_shape;
   bool is_cropped;
-#ifdef CGAL_EXACT_PREDICATES_EXACT_CONSTRUCTIONS_KERNEL_H
+#ifdef USE_EXACT_KERNEL
   std::map<vertex, face> laguerre_cell;
-  std::map<vertex, chain> cropped_cell;
+  std::map<vertex, polygon> cropped_cells;
+  std::map<Regular_triangulation::Face_handle, K::Point_2> vertex_at_dual_face;
 #else
   std::unordered_map<vertex, face> laguerre_cell;
-  std::unordered_map<vertex, chain> cropped_cell;
-#endif
-  std::unordered_set<K::Segment_2> cropped_edges;
+  std::unordered_map<vertex, polygon> cropped_cells;
   std::unordered_map<Regular_triangulation::Face_handle, K::Point_2>
       vertex_at_dual_face;
+#endif
 
   /* cell cropping utils */
   enum INSERT_POS { start = -1, middle = 0, end = 1 };
-  double polygon_area(chain c);
   void insert_segment(std::list<chain> *chain_list, K::Segment_2 seg,
                       enum INSERT_POS insert_pos);
-  chain cropped_cell_boundary(face &edges, chain &support_chain);
+  polygon cropped_cell_boundary(face &edges, polygon support_polygon);
 
 public:
   /* Construction from regular triangulation */
@@ -74,9 +82,11 @@ public:
   std::list<vertex> vertices;
 
   /* Crop power diagram with rectangle or polygon */
-  void crop(chain support_chain);
+  void crop(chain support_chain) {
+    crop(polygon(support_chain.begin(), support_chain.end()));
+  }
   void crop(K::Iso_rectangle_2 bbox);
-  void crop(CGAL::Polygon_2<K> support);
+  void crop(polygon support_polygon);
 
   /* For integration */
   vertex_with_data area();
@@ -94,4 +104,24 @@ public:
   template <class Stream> Stream &draw_dual(Stream &ps) {
     return dual_rt.draw_dual(ps);
   }
+};
+
+class rectangle_crop {
+  K::Iso_rectangle_2 m_bbox;
+
+public:
+  std::list<K::Segment_2> edges;
+  rectangle_crop(const K::Iso_rectangle_2 &bbox) : m_bbox(bbox){};
+
+  template <class RSL> void crop_and_extract_segment(const RSL &rsl) {
+    CGAL::Object obj = CGAL::intersection(rsl, m_bbox);
+    K::Segment_2 s;
+    if (CGAL::assign(s, obj)) {
+      edges.push_back(s);
+    }
+  }
+
+  void operator<<(const K::Ray_2 &ray) { crop_and_extract_segment(ray); }
+  void operator<<(const K::Line_2 &line) { crop_and_extract_segment(line); }
+  void operator<<(const K::Segment_2 &seg) { crop_and_extract_segment(seg); }
 };

@@ -6,12 +6,16 @@ cmake_minimum_required(VERSION 3.1...3.14)
 project(semi-discrete-Wasserstein-barycenter)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_BUILD_TYPE debug)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20")
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 set(CMAKE_BUILD_TYPE "Debug")
 set(CGAL_DATA_DIR ".")
+
+option(USE_EXACT_KERNEL "whether use the CGAL exact kernel" OFF)
+if (USE_EXACT_KERNEL)
+	add_definitions(-DUSE_EXACT_KERNEL)
+endif(USE_EXACT_KERNEL)
 
 find_package(CGAL REQUIRED QUIET OPTIONAL_COMPONENTS Core Qt5)
 find_package(GSL REQUIRED)

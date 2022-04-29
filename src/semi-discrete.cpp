@@ -95,8 +95,8 @@ PowerDiagram wasserstein_barycenter(std::list<K::Point_2> support_vertex,
         }
 
         coef_it++;
-        x += (*coef_it) * margs[m - 1][n - 1].first.x();
-        y += (*coef_it) * margs[m - 1][n - 1].first.y();
+        x += CGAL::to_double((*coef_it) * margs[m - 1][n - 1].first.x());
+        y += CGAL::to_double((*coef_it) * margs[m - 1][n - 1].first.y());
         p *= margs[m - 1][n - 1].second;
       }
       x /= (1 - coefs.front());
@@ -174,7 +174,8 @@ PowerDiagram wasserstein_barycenter(std::list<K::Point_2> support_vertex,
                                                  zero_potential[i].weight() +
                                                      step_size * error);
         new_potential.push_back(zero_potential[i]);
-        glp_set_obj_coef(lp, i + 1, zero_potential[i].weight());
+        glp_set_obj_coef(lp, i + 1,
+                         CGAL::to_double(zero_potential[i].weight()));
       }
     }
     if (removed_row.size() > 0) {

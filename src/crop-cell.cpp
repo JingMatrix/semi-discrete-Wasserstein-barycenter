@@ -1,27 +1,4 @@
 #include "power-diagram.hpp"
-/* #include <CGAL/draw_polygon_2.h> */
-
-double PowerDiagram::polygon_area(chain c) {
-  if (c.size() < 2) {
-    std::cout << "Get invalid boundary with only " << c.size() << " points."
-              << " They are: ";
-    for (auto p : c) {
-      std::cout << p << ", ";
-    }
-    std::cout << "\b\b." << std::endl;
-    return 0;
-  }
-  CGAL::Polygon_2<K> polygon = CGAL::Polygon_2<K>(c.begin(), c.end());
-  if (not polygon.is_convex()) {
-    /* std::cerr << "A cell is not convex" << std::endl; */
-    /* std::cerr << "It has vertex: "; */
-    /* for (auto pit = pts.begin(); pit != pts.end(); ++pit) { */
-    /*   std::cerr << *pit << "\t"; */
-    /* } */
-    /* std::cerr << std::endl; */
-  }
-  return CGAL::to_double(polygon.area());
-};
 
 void PowerDiagram::insert_segment(std::list<chain> *chain_list,
                                   K::Segment_2 seg,
@@ -92,16 +69,13 @@ void PowerDiagram::insert_segment(std::list<chain> *chain_list,
     /* std::cout << "Add a new chain to current boundary." << std::endl; */
     chain_list->push_back(new_chain);
   }
-  cropped_edges.insert(seg);
 }
 
-PowerDiagram::chain PowerDiagram::cropped_cell_boundary(face &face,
-                                                        chain &support_chain) {
+PowerDiagram::polygon
+PowerDiagram::cropped_cell_boundary(face &face, polygon support_polygon) {
 
   std::list<chain> cell_boundary_chain;
   std::map<K::Point_2, K::Segment_2> hit_support;
-  CGAL::Polygon_2<K> support_polygon =
-      CGAL::Polygon_2<K>(support_chain.begin(), support_chain.end());
   std::list<K::Segment_2> support{support_polygon.edges_begin(),
                                   support_polygon.edges_end()};
 
@@ -340,8 +314,8 @@ PowerDiagram::chain PowerDiagram::cropped_cell_boundary(face &face,
             break;
           }
           std::cerr << "No chain can be removed naively." << std::endl;
-          CGAL::Polygon_2<K> p = CGAL::Polygon_2<K>(
-              actual_cell_boundary.begin(), actual_cell_boundary.end());
+          polygon p =
+              polygon(actual_cell_boundary.begin(), actual_cell_boundary.end());
           std::cerr << "Current chain has " << actual_cell_boundary.size()
                     << " vetex, they are: " << std::endl;
           for (auto pit = actual_cell_boundary.begin();
@@ -405,8 +379,8 @@ PowerDiagram::chain PowerDiagram::cropped_cell_boundary(face &face,
         }
       }
     }
-    return actual_cell_boundary;
+    return polygon(actual_cell_boundary.begin(), actual_cell_boundary.end());
   } else {
-    return chain{K::Point_2(0, 0)};
+    return polygon();
   }
 }

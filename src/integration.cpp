@@ -8,8 +8,8 @@ PowerDiagram::vertex_with_data PowerDiagram::area() {
     std::cerr << "Power diagram not cropped, please use crop method fisrt."
               << std::endl;
   } else {
-    for (auto cc : cropped_cell) {
-      area.insert({cc.first, polygon_area(cc.second)});
+    for (auto cc : cropped_cells) {
+      area.insert({cc.first, CGAL::to_double(cc.second.area())});
     }
   }
   return area;
