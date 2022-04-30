@@ -20,5 +20,4 @@ for j in range(1, 3):
                     str(random.uniform(0, 1)) + "\n"
                     )
     dists.write("\n")
-dists.write("\n")
 dists.close()

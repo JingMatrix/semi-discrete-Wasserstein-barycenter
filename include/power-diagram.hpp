@@ -38,12 +38,9 @@ private:
 #ifdef USE_EXACT_KERNEL
   std::map<vertex, face> laguerre_cell;
   std::map<vertex, polygon> cropped_cells;
-  std::map<Regular_triangulation::Face_handle, K::Point_2> vertex_at_dual_face;
 #else
   std::unordered_map<vertex, face> laguerre_cell;
   std::unordered_map<vertex, polygon> cropped_cells;
-  std::unordered_map<Regular_triangulation::Face_handle, K::Point_2>
-      vertex_at_dual_face;
 #endif
 
   /* cell cropping utils */
@@ -72,6 +69,8 @@ public:
     generate_power_diagram(dual_rt);
   };
 
+  PowerDiagram(){};
+
   template <class InputIterator>
   PowerDiagram(InputIterator first, InputIterator last) {
     dual_rt = Regular_triangulation(first, last);
@@ -80,6 +79,8 @@ public:
   };
 
   std::list<vertex> vertices;
+  std::unordered_map<Regular_triangulation::Face_handle, K::Point_2>
+      vertex_at_dual_face;
 
   /* Crop power diagram with rectangle or polygon */
   void crop(chain support_chain) {

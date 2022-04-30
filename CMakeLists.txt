@@ -13,8 +13,8 @@ set(CMAKE_BUILD_TYPE "Debug")
 set(CGAL_DATA_DIR ".")
 
 option(USE_EXACT_KERNEL "whether use the CGAL exact kernel" OFF)
-if (USE_EXACT_KERNEL)
-	add_definitions(-DUSE_EXACT_KERNEL)
+if(USE_EXACT_KERNEL)
+  add_definitions(-DUSE_EXACT_KERNEL)
 endif(USE_EXACT_KERNEL)
 
 find_package(CGAL REQUIRED QUIET OPTIONAL_COMPONENTS Core Qt5)
@@ -33,14 +33,22 @@ add_library(
   src/crop.cpp
   src/draw.cpp
 )
+add_library(
+  barycenter
+  src/marginals.cpp
+  src/numerical_solver.cpp
+  src/linear-programming.cpp
+)
 
 add_executable(draw-power-diagram src/qt_draw_example.cpp)
 add_executable(test src/test.cpp)
-add_executable(semi-discrete src/semi-discrete.cpp)
 
 target_link_libraries(
-  semi-discrete
   power-diagram
+  ${CGAL_LIBRARIES}
+)
+target_link_libraries(
+  barycenter
   ${GLPK_LIBRARIES}
 )
 target_link_libraries(
@@ -50,9 +58,6 @@ target_link_libraries(
 )
 target_link_libraries(
   test
+  barycenter
   power-diagram
-)
-target_link_libraries(
-  power-diagram
-  ${CGAL_LIBRARIES}
 )
