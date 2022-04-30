@@ -31,10 +31,9 @@ public:
   typedef std::list<K::Point_2> chain;
 
 private:
-  void generate_power_diagram(Regular_triangulation &rt);
+  void generate_power_diagram();
   Regular_triangulation dual_rt;
   polygon cropped_shape;
-  bool is_cropped;
 #ifdef USE_EXACT_KERNEL
   std::map<vertex, face> laguerre_cell;
   std::map<vertex, polygon> cropped_cells;
@@ -60,25 +59,25 @@ public:
     }
     dual_rt = Regular_triangulation(wpoints.begin(), wpoints.end());
     is_cropped = false;
-    generate_power_diagram(dual_rt);
+    is_empty = false;
   }
 
   PowerDiagram(Regular_triangulation &rt) {
     dual_rt = rt;
     is_cropped = false;
-    generate_power_diagram(dual_rt);
+    is_empty = false;
   };
 
-  PowerDiagram(){};
+  PowerDiagram() { is_empty = true; };
 
   template <class InputIterator>
   PowerDiagram(InputIterator first, InputIterator last) {
     dual_rt = Regular_triangulation(first, last);
     is_cropped = false;
-    generate_power_diagram(dual_rt);
+    is_empty = false;
   };
 
-  std::list<vertex> vertices;
+  std::list<vertex> centers;
   std::unordered_map<Regular_triangulation::Face_handle, K::Point_2>
       vertex_at_dual_face;
 
@@ -93,6 +92,9 @@ public:
   vertex_with_data area();
   vertex_with_data integral(gsl_monte_function &f);
 
+  bool is_cropped = false;
+  bool is_empty = true;
+
   /* Draw power diagram through different interface. */
   void plot_mma();
   void gnuplot();
@@ -105,24 +107,4 @@ public:
   template <class Stream> Stream &draw_dual(Stream &ps) {
     return dual_rt.draw_dual(ps);
   }
-};
-
-class rectangle_crop {
-  K::Iso_rectangle_2 m_bbox;
-
-public:
-  std::list<K::Segment_2> edges;
-  rectangle_crop(const K::Iso_rectangle_2 &bbox) : m_bbox(bbox){};
-
-  template <class RSL> void crop_and_extract_segment(const RSL &rsl) {
-    CGAL::Object obj = CGAL::intersection(rsl, m_bbox);
-    K::Segment_2 s;
-    if (CGAL::assign(s, obj)) {
-      edges.push_back(s);
-    }
-  }
-
-  void operator<<(const K::Ray_2 &ray) { crop_and_extract_segment(ray); }
-  void operator<<(const K::Line_2 &line) { crop_and_extract_segment(line); }
-  void operator<<(const K::Segment_2 &seg) { crop_and_extract_segment(seg); }
 };

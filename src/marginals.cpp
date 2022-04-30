@@ -17,7 +17,7 @@ void operator>>(std::istream &in, std::vector<discrete_dist> &dists) {
                ++pit) {
             (pit->second) /= sum_proba;
           }
-          std::cout << "Normalisation of probability weights is done."
+          std::cout << "Normalization of probability weights is done."
                     << std::endl;
         }
         std::cout << std::endl;
@@ -46,6 +46,11 @@ WassersteinBarycenter::WassersteinBarycenter(const char *filename,
                                              PowerDiagram::polygon support) {
   std::ifstream read_dist(filename);
   read_dist >> marginals;
+  if (marginals.size() == 0) {
+    std::cout << "Find no data in file " << filename << " available, exit."
+              << std::endl;
+    std::exit(EXIT_SUCCESS);
+  }
   if (marginals.back().size() == 0) {
     marginals.pop_back();
   }
@@ -78,7 +83,8 @@ WassersteinBarycenter::get_marginal_coefficients(int argc, char *argv[]) {
       std::string coef_string = argv[i + 1];
       double coef = std::stod(coef_string);
       if (coef < 0) {
-        std::cerr << "The coeficient " << coef << " is not valid." << std::endl;
+        std::cerr << "The coefficient " << coef << " is not valid."
+                  << std::endl;
       } else {
         coefs.push_back(coef);
       }

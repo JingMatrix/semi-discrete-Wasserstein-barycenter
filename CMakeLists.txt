@@ -36,6 +36,7 @@ add_library(
 add_library(
   barycenter
   src/marginals.cpp
+  src/semi-discrete.cpp
   src/numerical_solver.cpp
   src/linear-programming.cpp
 )

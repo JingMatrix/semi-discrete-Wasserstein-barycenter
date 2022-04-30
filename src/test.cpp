@@ -9,6 +9,7 @@ double test_area() {
   CGAL::IO::set_pretty_mode(std::cerr);
   PowerDiagram pd("data/weight_points");
   pd.crop(bbox);
+  /* pd.gnuplot(); */
   auto data_area = pd.area();
   double check_area = 0;
   for (auto cit = data_area.begin(); cit != data_area.end(); ++cit) {
@@ -25,10 +26,10 @@ double find_barycenter(int argc, char *argv[]) {
   return default_problem.sum_error;
 }
 
-
 int main(int argc, char *argv[]) {
-  std::cout << "Area test for cell crop algorithm get: " << test_area()
+  double area = test_area();
+  std::cout << "Area test for cell crop algorithm get: " << area << std::endl;
+  double error = find_barycenter(argc, argv);
+  std::cout << "Wasserstein barycenter searching gets error: " << error
             << std::endl;
-  std::cout << "Wasserstein barycenter searching gets error: "
-            << find_barycenter(argc, argv) << std::endl;
 }
