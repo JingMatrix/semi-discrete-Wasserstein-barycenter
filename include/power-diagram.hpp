@@ -37,27 +37,7 @@ private:
 #else
   std::unordered_map<vertex, polygon> cropped_cells;
 #endif
-
-  /* I have two different cell cropping algorithm, */
-  /* chain merging crop or rotation crop, */
-  /* they implement the same cropping interface. */
-  /* This method should generate the cropped_cells. */
   void crop_algorithm();
-
-  /* Give declrations here to enable access for the */
-  /* chain merging crop algorithm. */
-  typedef std::pair<CGAL::Object, CGAL::Orientation> edge;
-  typedef std::list<edge> face;
-#ifdef USE_EXACT_KERNEL
-  std::map<vertex, face> laguerre_cell;
-#else
-  std::unordered_map<vertex, face> laguerre_cell;
-#endif
-  polygon cropped_cell_boundary(vertex);
-  void generate_laguerre_cell();
-  enum INSERT_POS { start = -1, middle = 0, end = 1 };
-  void insert_segment(std::list<chain> *chain_list, K::Segment_2 seg,
-                      enum INSERT_POS insert_pos);
 
 public:
   bool is_cropped = false;
@@ -110,7 +90,7 @@ public:
   vertex_with_data area();
   vertex_with_data integral(gsl_monte_function &f);
 
-  /* Draw power diagram through different interface. */
+  /* Draw power diagram through different interfaces. */
   void plot_mma();
   void gnuplot();
 
