@@ -27,10 +27,8 @@ include_directories(
 
 add_library(
   power-diagram
-  src/power-diagram.cpp
   src/integration.cpp
-  src/crop-cell.cpp
-  src/crop.cpp
+  src/rotation-crop.cpp
   src/draw.cpp
 )
 add_library(

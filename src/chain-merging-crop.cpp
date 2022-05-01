@@ -1,5 +1,61 @@
 #include "power-diagram.hpp"
 
+void PowerDiagram::crop_algorithm() {
+  generate_laguerre_cell();
+  if (dual_rt.dimension() == 1) {
+    /* Currently I only deal with two points */
+    if (number_of_vertices() == 2 && laguerre_cell.size() == 2) {
+      K::Line_2 l;
+      if (CGAL::assign(l, laguerre_cell.begin()->second.front().first)) {
+        K::Point_2 p;
+        chain intersection;
+        auto cit = cropped_shape.edges_circulator();
+        decltype(cit) sit;
+        bool GET_SIT = false;
+        decltype(cit) lit;
+        for (int i = 0; i < cropped_shape.size(); i++) {
+          if (CGAL::do_intersect(l, *cit)) {
+            if (CGAL::assign(p, CGAL::intersection(l, *cit))) {
+              intersection.push_back(p);
+              if (GET_SIT) {
+                lit = cit;
+              } else {
+                sit = cit;
+                GET_SIT = true;
+              }
+            }
+            cit++;
+          }
+        }
+        if (intersection.size() == 2) {
+          chain c1{intersection.front(), intersection.back()};
+          chain c2{intersection.back(), intersection.front()};
+          int n1 = CGAL::circulator_distance(lit, sit);
+          int n2 = CGAL::circulator_distance(sit, lit);
+          for (int i = 0; i < n1; i++) {
+            c1.push_back(lit->target());
+            lit++;
+          }
+          for (int i = 0; i < n2; i++) {
+            c2.push_back(sit->target());
+            sit++;
+          }
+          cropped_cells.insert(
+              {laguerre_cell.begin()->first, polygon(c1.begin(), c1.end())});
+          cropped_cells.insert({(++laguerre_cell.begin())->first,
+                                polygon(c2.begin(), c2.end())});
+        }
+      }
+    }
+  } else {
+    for (auto lc : laguerre_cell) {
+      polygon boundary = cropped_cell_boundary(lc.first);
+      cropped_cells.insert({lc.first, boundary});
+    }
+  }
+  is_cropped = true;
+}
+
 void PowerDiagram::insert_segment(std::list<chain> *chain_list,
                                   K::Segment_2 seg,
                                   enum INSERT_POS insert_pos) {
@@ -71,13 +127,12 @@ void PowerDiagram::insert_segment(std::list<chain> *chain_list,
   }
 }
 
-PowerDiagram::polygon
-PowerDiagram::cropped_cell_boundary(face &face, polygon support_polygon) {
+PowerDiagram::polygon PowerDiagram::cropped_cell_boundary(vertex v) {
 
   std::list<chain> cell_boundary_chain;
   std::map<K::Point_2, K::Segment_2> hit_support;
-  std::list<K::Segment_2> support{support_polygon.edges_begin(),
-                                  support_polygon.edges_end()};
+  std::list<K::Segment_2> support{cropped_shape.edges_begin(),
+                                  cropped_shape.edges_end()};
 
   /* For temporary convertion of edges */
   K::Segment_2 s;
@@ -86,7 +141,8 @@ PowerDiagram::cropped_cell_boundary(face &face, polygon support_polygon) {
   /* for intersection */
   /* p will be the intersection point */
   K::Point_2 p;
-  for (auto eit = face.begin(); eit != face.end(); ++eit) {
+  for (auto eit = laguerre_cell[v].begin(); eit != laguerre_cell[v].end();
+       ++eit) {
 
     enum INSERT_POS insert_pos = middle;
     std::vector<K::Segment_2> intersect_segs;
@@ -108,7 +164,7 @@ PowerDiagram::cropped_cell_boundary(face &face, polygon support_polygon) {
             hit_support.insert({p, *sit});
             /* We need to judge which end of the edge should */
             /* 	is inside the support */
-            if (support_polygon.bounded_side(s_start) ==
+            if (cropped_shape.bounded_side(s_start) ==
                 CGAL::ON_UNBOUNDED_SIDE) {
               intersect_segs.push_back(K::Segment_2(p, s_end));
               insert_pos = start;
@@ -120,7 +176,7 @@ PowerDiagram::cropped_cell_boundary(face &face, polygon support_polygon) {
         }
       }
       if (intersect_segs.size() == 0) {
-        if (support_polygon.bounded_side(s_start) == CGAL::ON_BOUNDED_SIDE) {
+        if (cropped_shape.bounded_side(s_start) == CGAL::ON_BOUNDED_SIDE) {
           intersect_segs.push_back(s);
         }
       }

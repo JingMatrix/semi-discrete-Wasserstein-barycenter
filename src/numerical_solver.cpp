@@ -4,7 +4,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step) {
 
   initialize_lp();
   partition = PowerDiagram(potential.begin(), potential.end());
-  partition.crop(support_polygon);
+  initialize_support();
   cell_area = partition.area();
 
   for (int j = 0; j < step; j++) {
@@ -63,7 +63,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step) {
       std::cout << "\b\b." << std::endl;
     }
     partition = PowerDiagram(new_potential.begin(), new_potential.end());
-    partition.crop(support_polygon);
+    initialize_support();
     cell_area = partition.area();
     std::cout << "Calculate power diagram with " << new_potential.size()
               << " points, return " << cell_area.size() << " area data."

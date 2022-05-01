@@ -8,6 +8,7 @@ public:
   typedef std::vector<std::pair<K::Point_2, double>> discrete_dist;
 
 private:
+  enum shape { Polygon, Rectangle };
   std::vector<discrete_dist> marginals;
   int n_marginals;
   std::list<double> marginal_coefficients;
@@ -33,6 +34,21 @@ private:
   }
 
   PowerDiagram::polygon support_polygon;
+  K::Iso_rectangle_2 support_box;
+  shape crop_style;
+  double support_area = 0;
+  void initialize_support() {
+    if (crop_style == Polygon) {
+      partition.crop(support_polygon);
+      support_area = CGAL::to_double(support_polygon.area());
+    } else if (crop_style == Rectangle) {
+      partition.crop(support_box);
+      support_area = CGAL::to_double(support_box.area());
+    } else {
+      std::cerr << "Failed to initialize support" << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+  }
   bool uniform_measre = true;
   std::vector<PowerDiagram::vertex> potential;
   PowerDiagram::vertex_with_data cell_area;
@@ -54,11 +70,12 @@ private:
 
 public:
   PowerDiagram partition;
-  WassersteinBarycenter(
-      const char *filename = "data/marginals",
-      std::list<double> marginal_coefficients = {},
-      /* The empty polygon will be replace by the unit square. */
-      PowerDiagram::polygon support_polygon = PowerDiagram::polygon{});
+  WassersteinBarycenter(PowerDiagram::polygon support_polygon,
+                        const char *filename = "data/marginals",
+                        std::list<double> marginal_coefficients = {});
+  WassersteinBarycenter(K::Iso_rectangle_2 bbox = {0, 0, 1, 1},
+                        const char *filename = "data/marginals",
+                        std::list<double> marginal_coefficients = {});
   static std::list<double> get_marginal_coefficients(int argc, char *argv[]);
 
   void iteration_solver(unsigned int step);

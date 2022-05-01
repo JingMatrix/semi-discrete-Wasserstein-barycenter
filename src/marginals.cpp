@@ -41,9 +41,9 @@ void operator>>(std::istream &in, std::vector<discrete_dist> &dists) {
   }
 }
 
-WassersteinBarycenter::WassersteinBarycenter(const char *filename,
-                                             std::list<double> coefs,
-                                             PowerDiagram::polygon support) {
+WassersteinBarycenter::WassersteinBarycenter(K::Iso_rectangle_2 bbox,
+                                             const char *filename,
+                                             std::list<double> coefs) {
   std::ifstream read_dist(filename);
   read_dist >> marginals;
   if (marginals.size() == 0) {
@@ -67,12 +67,48 @@ WassersteinBarycenter::WassersteinBarycenter(const char *filename,
     set_marginal_coefficients(coefs);
   }
 
-  if (support.is_empty()) {
-    std::list<K::Point_2> vertices{K::Point_2(0, 0), K::Point_2(1, 0),
-                                   K::Point_2(1, 1), K::Point_2(0, 1)};
-    support = PowerDiagram::polygon(vertices.begin(), vertices.end());
+  if (not bbox.is_degenerate()) {
+    support_box = bbox;
+    crop_style = Rectangle;
+  } else {
+    std::cerr << "Invalid rectangle supoort." << std::endl;
+    std::exit(EXIT_FAILURE);
   }
-  support_polygon = support;
+}
+
+WassersteinBarycenter::WassersteinBarycenter(PowerDiagram::polygon support,
+                                             const char *filename,
+                                             std::list<double> coefs) {
+  std::ifstream read_dist(filename);
+  read_dist >> marginals;
+  if (marginals.size() == 0) {
+    std::cout << "Find no data in file " << filename << " available, exit."
+              << std::endl;
+    std::exit(EXIT_SUCCESS);
+  }
+  if (marginals.back().size() == 0) {
+    marginals.pop_back();
+  }
+
+  n_marginals = marginals.size();
+  for (auto dist : marginals) {
+    dims.push_back(dist.size());
+  }
+
+  if (coefs.size() != n_marginals + 1) {
+    marginal_coefficients =
+        std::list<double>(n_marginals + 1, 1.0 / (n_marginals + 1));
+  } else {
+    set_marginal_coefficients(coefs);
+  }
+
+  if (support.size() != 0) {
+    support_polygon = support;
+    crop_style = Polygon;
+  } else {
+    std::cerr << "Invalid polygon supoort." << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
 }
 
 std::list<double>
