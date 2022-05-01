@@ -2,10 +2,13 @@
 void PowerDiagram::crop_algorithm() {
   is_cropped = true;
   std::list<std::pair<Regular_triangulation::Face_handle, int>> edges;
+  std::unordered_map<Regular_triangulation::Face_handle, bool> inside_support;
   for (auto f : dual_rt.finite_face_handles()) {
     edges.push_back({f, 0});
     edges.push_back({f, 1});
     edges.push_back({f, 2});
+    inside_support.insert(
+        {f, cropped_shape.bounded_side(center[f]) != CGAL::ON_UNBOUNDED_SIDE});
   }
   for (auto e : edges) {
     Regular_triangulation::Face_handle f = e.first;
@@ -39,27 +42,13 @@ void PowerDiagram::crop_algorithm() {
       /* std::cout << "Rotate to a new face handle." << std::endl; */
       bool current_is_infinite = dual_rt.is_infinite(current_f);
       bool next_is_infinite = dual_rt.is_infinite(current_f->neighbor(i));
-      bool inside_support;
       enum FACE_CASE intersection_type;
       bool center_inserted = false;
 
-      if (not current_is_infinite) {
-        auto state = cropped_shape.bounded_side(center[current_f]);
-        switch (state) {
-        case CGAL::ON_BOUNDARY: {
-          start_with_intersection_at_support = true;
-        }
-        case CGAL::ON_BOUNDED_SIDE: {
-          /* std::cout << "Insert " << center[current_f] << std::endl; */
-          vertices.push_back(center[current_f]);
-          center_inserted = true;
-          inside_support = true;
-          break;
-        }
-        case CGAL::ON_UNBOUNDED_SIDE: {
-          inside_support = false;
-        }
-        }
+      if (not current_is_infinite && inside_support[current_f]) {
+        vertices.push_back(center[current_f]);
+        /* std::cout << "Insert " << center[current_f] << std::endl; */
+        center_inserted = true;
       }
 
       auto cit = cropped_shape.edges_circulator();
@@ -91,15 +80,18 @@ void PowerDiagram::crop_algorithm() {
 
       if (not current_is_infinite && not next_is_infinite) {
         intersection_type = CURRENT_FINITE_NEXT_FINITE;
-        s = K::Segment_2(center[current_f], center[current_f->neighbor(i)]);
-        for (int i = 0; i < cropped_shape.size(); i++) {
-          if (CGAL::do_intersect(s, *cit)) {
-            auto obj = CGAL::intersection(s, *cit);
-            if (CGAL::assign(p, obj)) {
-              vertices_in_queue.push_back({p, cit});
+        if (not inside_support[current_f] ||
+            not inside_support[current_f->neighbor(i)]) {
+          s = K::Segment_2(center[current_f], center[current_f->neighbor(i)]);
+          for (int i = 0; i < cropped_shape.size(); i++) {
+            if (CGAL::do_intersect(s, *cit)) {
+              auto obj = CGAL::intersection(s, *cit);
+              if (CGAL::assign(p, obj)) {
+                vertices_in_queue.push_back({p, cit});
+              }
             }
+            cit++;
           }
-          cit++;
         }
       }
 
@@ -129,20 +121,40 @@ void PowerDiagram::crop_algorithm() {
           need_insert_support_vertices = true;
         }
       } else {
-        if (not inside_support && vertices_in_queue.size() == 2 &&
-            CGAL::orientation(vertices_in_queue.front().first,
-                              vertices_in_queue.back().first,
-                              v.point()) == CGAL::RIGHT_TURN) {
-          /* std::cout << "Current center " << center[current_f] */
-          /*           << " is out of support and we change the order of " */
-          /*              "intersection points." */
-          /*           << std::endl; */
-          vertices_in_queue.reverse();
+        if (vertices_in_queue.size() == 2 && not inside_support[current_f]) {
+          vertex v_end =
+              current_f->vertex(Regular_triangulation::ccw(i))->point();
+          auto side1 =
+              CGAL::orientation(vertices_in_queue.front().first,
+                                vertices_in_queue.back().first, v.point());
+          auto side2 =
+              CGAL::orientation(vertices_in_queue.front().first,
+                                vertices_in_queue.back().first, v_end.point());
+          /* std::cout << "Info: " << v << " has side " << side1 << "; " <<
+           * v_end */
+          /*           << " has side " << side2 << std::endl; */
+          if (side1 == side2) {
+            if (v.weight() < v_end.weight() && side1 == CGAL::LEFT_TURN) {
+              vertices_in_queue.reverse();
+            }
+            if (v.weight() > v_end.weight() && side1 == CGAL::RIGHT_TURN) {
+              vertices_in_queue.reverse();
+            }
+          } else if (side1 == CGAL::RIGHT_TURN) {
+            vertices_in_queue.reverse();
+          }
         }
-
+        if (intersection_type == CURRENT_FINITE_NEXT_FINITE) {
+          if (not dual_rt.is_infinite(last_f)) {
+            if (not inside_support[current_f] &&
+                inside_support[current_f->neighbor(i)]) {
+              need_insert_support_vertices = true;
+            }
+          }
+        }
         /* Return back to the time we get the first intersection. */
         cit = vertices_in_queue.front().second;
-        if (need_insert_support_vertices) {
+        if (vertices.size() > 0 && need_insert_support_vertices) {
           /* std::cout << "Adding vertices from the support." << std::endl; */
           int n = CGAL::iterator_distance(last_intersection_edge, cit) %
                   cropped_shape.size();
@@ -174,7 +186,8 @@ void PowerDiagram::crop_algorithm() {
     } while (current_f != f);
 
     if (start_with_intersection_at_support) {
-      /* std::cout << "This chains starts with an intersection at the support." */
+      /* std::cout << "This chains starts with an intersection at the support."
+       */
       /*           << std::endl; */
       int n = CGAL::iterator_distance(last_intersection_edge,
                                       first_intersection_edge) %

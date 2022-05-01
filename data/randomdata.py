@@ -2,11 +2,11 @@
 import random
 import sys
 wps = open(sys.path[0] + "/weight_points", "w")
-for i in range(0, 10):
+for i in range(0, 10000):
     wps.write(str(random.uniform(0.1, 0.8)) + "\t" +
               str(random.uniform(0.1, 0.8)) + "\t" +
-              # str(random.uniform(0, 0.3)) + "\n"
-              "0.01\n"
+              str(random.uniform(0, 0.3)) + "\n"
+              # "0.01\n"
               )
 
 wps.close()

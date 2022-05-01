@@ -49,7 +49,8 @@ void PowerDiagram::gnuplot() {
         << std::endl
         << "unset key" << std::endl
         << "plot \"data/pd_lines\" with vector, "
-        << "\"data/pd_points\" with circles" << std::endl;
+        << "\"data/pd_points\" with circles, "
+        << "\"data/pd_points\" with points" << std::endl;
     std::cout << "Running command: gnuplot -p data/gnu_plot to show"
                  " current power diagram."
               << std::endl;
