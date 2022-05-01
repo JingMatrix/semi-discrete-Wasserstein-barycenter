@@ -61,6 +61,8 @@ public:
     dual_rt = Regular_triangulation(first, last);
   };
 
+  void insert(vertex v) { dual_rt.insert(v); }
+
   std::unordered_map<Regular_triangulation::Face_handle, K::Point_2> center;
 
   /* Crop power diagram with rectangle or polygon */

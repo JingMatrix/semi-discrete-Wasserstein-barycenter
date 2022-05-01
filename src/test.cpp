@@ -25,9 +25,9 @@ double find_barycenter(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
-  double area = test_area();
-  std::cout << "Area test for cell crop algorithm get: " << area << std::endl;
-  /* double error = find_barycenter(argc, argv); */
-  /* std::cout << "Wasserstein barycenter searching gets error: " << error */
-  /*           << std::endl; */
+  /* double area = test_area(); */
+  /* std::cout << "Area test for cell crop algorithm get: " << area << std::endl; */
+  double error = find_barycenter(argc, argv);
+  std::cout << "Wasserstein barycenter searching gets error: " << error
+            << std::endl;
 }

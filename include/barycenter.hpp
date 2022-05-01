@@ -50,8 +50,7 @@ private:
     }
   }
   bool uniform_measre = true;
-  std::vector<PowerDiagram::vertex> potential;
-  PowerDiagram::vertex_with_data cell_area;
+  std::vector<double> potential;
 
   /* linear programming part */
   glp_prob *lp = glp_create_prob();
@@ -59,13 +58,21 @@ private:
   void initialize_lp();
   int n_row_variables = 0;
   int n_column_variables = 1;
+  /* no zero entries in the constrain matrix */
   int n_entries;
   std::vector<int> dims;
+  std::vector<std::vector<int>> column_variables{{0}};
+  std::unordered_set<int> dumped_column_variables;
+  std::unordered_set<int> valid_column_variables;
+  std::vector<K::Point_2> support_points{K::Point_2()};
+  /* default discrete plan is the independent plan */
   std::vector<double> discrete_plan;
 
   /* Numerical solution */
-  double step_size = 0.01;
-  std::vector<double> errors;
+  double step_size;
+  std::vector<double> gradient;
+  void update_info();
+  /* Semi discrete optimal transport solver */
   void semi_discrete(double tolerance);
 
 public:
@@ -78,7 +85,7 @@ public:
                         std::list<double> marginal_coefficients = {});
   static std::list<double> get_marginal_coefficients(int argc, char *argv[]);
 
-  void iteration_solver(unsigned int step);
-  double sum_error;
+  void iteration_solver(unsigned int step, double stepsize = 0.01);
+  double sum_error = 0;
   ~WassersteinBarycenter() { glp_delete_prob(lp); }
 };

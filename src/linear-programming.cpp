@@ -33,6 +33,8 @@ void WassersteinBarycenter::initialize_lp() {
 
     /* j convert iterate_list into an integer */
     for (int j = 1; j <= n_column_variables; j++) {
+
+      column_variables.push_back(iterate_list);
       /* x, y are for point coordinates */
       double x = 0;
       double y = 0;
@@ -40,7 +42,7 @@ void WassersteinBarycenter::initialize_lp() {
 
       /* We start with a Voronoi diagram, and uniform distribution
        * as the initial solution. */
-      double p = 1;
+      double proba = 1;
       /* Use (m, n) as coordinate in marginals, i.e., */
       /* the n th element in the m th marginal. */
       for (int m = 1; m <= n_marginals; m++) {
@@ -54,9 +56,6 @@ void WassersteinBarycenter::initialize_lp() {
             ia[record] += dims[k - 1];
           }
           ar[record] = 1;
-          /* std::cout << "Trun on (i, j) = (" << */
-          /* ia[record] << ", " << ja[record] */
-          /*           << ") at index " << record << "." << std::endl; */
           record++;
         } else {
           std::cerr << "Wrong assumption on the number of entries in the "
@@ -68,13 +67,13 @@ void WassersteinBarycenter::initialize_lp() {
         coef_it++;
         x += CGAL::to_double((*coef_it) * marginals[m - 1][n - 1].first.x());
         y += CGAL::to_double((*coef_it) * marginals[m - 1][n - 1].first.y());
-        p *= marginals[m - 1][n - 1].second;
+        proba *= marginals[m - 1][n - 1].second;
       }
       x /= (1 - marginal_coefficients.front());
       y /= (1 - marginal_coefficients.front());
       /* std::cout << "Insert point " << x << ", " << y << std::endl; */
-      discrete_plan.push_back(p);
-      potential.push_back(PowerDiagram::vertex(K::Point_2(x, y), 0));
+      discrete_plan.push_back(proba);
+      support_points.push_back(K::Point_2(x, y));
       /* We order solution in the reverse dict order. */
       /* It doesn't matter how we order it at all since we deal the constraint
        * matrix at the same time. */
@@ -88,12 +87,14 @@ void WassersteinBarycenter::initialize_lp() {
       }
     }
 
-    if (potential.size() != n_column_variables) {
+    if (support_points.size() != n_column_variables + 1 ||
+        column_variables.size() != n_column_variables + 1) {
       std::cerr << "Potential initialization failed." << std::endl;
       std::exit(EXIT_FAILURE);
     }
   }
 
+  glp_load_matrix(lp, n_entries, ia, ja, ar);
   lp_initialized = true;
   glp_term_out(GLP_OFF);
 }
