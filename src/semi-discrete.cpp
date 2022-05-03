@@ -14,6 +14,7 @@ int jacobian_uniform_measure(const gsl_vector *x, void *p, gsl_vector *f,
   /* for (auto p : barycenter_problem->support_points) { */
   /*   std::cout << p << std::endl; */
   /* } */
+  barycenter_problem->partition.gnuplot();
   const int n_variables = variables.size();
   for (int i = 0; i < n_variables; i++) {
     barycenter_problem->potential[variables[i]] = gsl_vector_get(x, i);
@@ -58,8 +59,8 @@ int jacobian_uniform_measure(const gsl_vector *x, void *p, gsl_vector *f,
                 CGAL::to_double(border.squared_length() / s.squared_length())) /
             barycenter_problem->support_area;
       }
-      std::cout << "Set jacobian at (" << i << ", " << j << ") as " << p
-                << std::endl;
+      std::cout << "Set jacobian for variables (" << variables[i] << ", "
+                << variables[j] << ") as " << p << std::endl;
       gsl_matrix_set(df, i, j, p);
       gsl_matrix_set(df, j, i, p);
     }
@@ -110,7 +111,6 @@ void WassersteinBarycenter::semi_discrete(double tolerance, int step) {
       break;
     }
     status = gsl_multiroot_test_residual(s->f, tolerance);
-    partition.gnuplot();
   } while (status == GSL_CONTINUE && iter < step);
 
   for (int i = 0; i < FDF.n; i++) {

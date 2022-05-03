@@ -43,7 +43,8 @@ void PowerDiagram::gnuplot() {
     for (auto cell : cropped_cells) {
       auto poly = cell.second;
       point << cell.first.point() << " "
-            << cell.first.weight() - min_radius + 0.01 << std::endl;
+            << cell.first.weight() - min_radius + 0.01 << " "
+            << label[cell.first] << std::endl;
       for (auto eit = poly.edges_begin(); eit != poly.edges_end(); ++eit) {
         line << eit->source() << " " << eit->to_vector() << std::endl;
       }
@@ -53,8 +54,12 @@ void PowerDiagram::gnuplot() {
         << std::endl
         << "unset key" << std::endl
         << "plot \"data/pd_lines\" with vector dt 2 lt 20, "
-        << "\"data/pd_points\" with circles, "
-        << "\"data/pd_points\" with points pt 15" << std::endl;
+        << "\"data/pd_points\" with circles, ";
+    if (use_lable) {
+      cmd << "\"data/pd_points\" using 1:2:4 with labels" << std::endl;
+    } else {
+      cmd << "\"data/pd_points\" with points pt 15" << std::endl;
+    }
     std::cout << "Running command: gnuplot -p data/gnu_plot to show"
                  " current power diagram."
               << std::endl;

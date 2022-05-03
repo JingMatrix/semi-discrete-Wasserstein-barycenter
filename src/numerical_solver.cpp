@@ -16,14 +16,17 @@ void WassersteinBarycenter::update_info() {
   partition = PowerDiagram(vertices.begin(), vertices.end());
   initialize_support();
   auto cell_area = partition.area();
+  partition.use_lable = true;
 
   sum_error = 0;
   partition_area = 0;
   gradient = {0};
   if (not update_lp) {
     for (int j = 1; j <= n_column_variables; j++) {
-      gradient.push_back(discrete_plan[j] - cell_area[vertices[j - 1]]);
-      partition_area += cell_area[vertices[j - 1]];
+      auto v = vertices[j - 1];
+      gradient.push_back(discrete_plan[j] - cell_area[v]);
+      partition_area += cell_area[v];
+      partition.label.insert({v, std::to_string(j)});
       sum_error += std::abs(gradient[j]);
     }
     std::cout << std::endl
@@ -42,8 +45,10 @@ void WassersteinBarycenter::update_info() {
     for (int j = 1; j <= n_column_variables; j++) {
       double p = glp_get_col_prim(lp, j);
       discrete_plan.push_back(p);
-      gradient.push_back(p - cell_area[vertices[j - 1]]);
-      partition_area += cell_area[vertices[j - 1]];
+      auto v = vertices[j - 1];
+      gradient.push_back(discrete_plan[j] - cell_area[v]);
+      partition_area += cell_area[v];
+      partition.label.insert({v, std::to_string(j)});
       sum_error += std::abs(gradient[j]);
       if (p != 0) {
         std::printf("  %.4f\t %.4f\t\t%.4f\t\t(%.4f, %.4f)\n", discrete_plan[j],
@@ -77,7 +82,7 @@ void WassersteinBarycenter::update_info() {
     std::cerr << "Current support area is " << support_area
               << ", but partition area is " << partition_area << "."
               << std::endl;
-	partition.gnuplot();
+    partition.gnuplot();
   }
 }
 
