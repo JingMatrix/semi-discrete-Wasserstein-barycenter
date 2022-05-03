@@ -50,6 +50,7 @@ target_link_libraries(
 target_link_libraries(
   barycenter
   ${GLPK_LIBRARIES}
+  ${GSL_LIBRARIES}
 )
 # target_link_libraries(
 #   draw-power-diagram

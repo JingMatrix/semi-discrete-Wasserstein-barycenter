@@ -11,6 +11,8 @@ private:
   enum shape { Polygon, Rectangle };
   std::vector<discrete_dist> marginals;
   int n_marginals;
+  double partition_area = 0;
+  void read_marginals_data(const char *filename, std::list<double> coefs);
   std::list<double> marginal_coefficients;
   void set_marginal_coefficients(std::list<double> coefs) {
     double sum_proba = 0;
@@ -36,7 +38,6 @@ private:
   PowerDiagram::polygon support_polygon;
   K::Iso_rectangle_2 support_box;
   shape crop_style;
-  double support_area = 0;
   void initialize_support() {
     if (crop_style == Polygon) {
       partition.crop(support_polygon);
@@ -49,31 +50,26 @@ private:
       std::exit(EXIT_FAILURE);
     }
   }
-  bool uniform_measre = true;
-  std::vector<double> potential;
+  bool is_uniform_measure = true;
 
   /* linear programming part */
   glp_prob *lp = glp_create_prob();
   bool lp_initialized = false;
+  bool update_lp = true;
   void initialize_lp();
   int n_row_variables = 0;
   int n_column_variables = 1;
   /* no zero entries in the constrain matrix */
   int n_entries;
   std::vector<int> dims;
-  std::vector<std::vector<int>> column_variables{{0}};
   std::unordered_set<int> dumped_column_variables;
-  std::unordered_set<int> valid_column_variables;
-  std::vector<K::Point_2> support_points{K::Point_2()};
   /* default discrete plan is the independent plan */
   std::vector<double> discrete_plan;
 
   /* Numerical solution */
   double step_size;
-  std::vector<double> gradient;
-  void update_info();
   /* Semi discrete optimal transport solver */
-  void semi_discrete(double tolerance);
+  void semi_discrete(double tolerance, int step);
 
 public:
   PowerDiagram partition;
@@ -86,6 +82,16 @@ public:
   static std::list<double> get_marginal_coefficients(int argc, char *argv[]);
 
   void iteration_solver(unsigned int step, double stepsize = 0.01);
+
+  std::vector<std::vector<int>> column_variables{{0}};
+  std::vector<int> valid_column_variables;
+
+  double support_area = 0;
+  std::vector<K::Point_2> support_points{K::Point_2(0, 0)};
+  std::vector<double> potential;
+  std::vector<double> gradient;
+  void update_info();
   double sum_error = 0;
+
   ~WassersteinBarycenter() { glp_delete_prob(lp); }
 };

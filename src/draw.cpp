@@ -30,6 +30,10 @@ void PowerDiagram::gnuplot() {
     std::ofstream line("data/pd_lines");
     std::ofstream point("data/pd_points");
     std::list<polygon> polygon_to_draw{};
+    if (cropped_cells.size() == 0) {
+      std::cout << "No cells found." << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
     double min_radius = CGAL::to_double(cropped_cells.begin()->first.weight());
     for (auto cell : cropped_cells) {
       if (cell.first.weight() < min_radius) {
@@ -48,9 +52,9 @@ void PowerDiagram::gnuplot() {
     cmd << "#! gnuplot -p" << std::endl
         << std::endl
         << "unset key" << std::endl
-        << "plot \"data/pd_lines\" with vector, "
+        << "plot \"data/pd_lines\" with vector dt 2 lt 20, "
         << "\"data/pd_points\" with circles, "
-        << "\"data/pd_points\" with points" << std::endl;
+        << "\"data/pd_points\" with points pt 15" << std::endl;
     std::cout << "Running command: gnuplot -p data/gnu_plot to show"
                  " current power diagram."
               << std::endl;

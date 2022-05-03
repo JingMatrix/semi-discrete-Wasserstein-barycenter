@@ -27,7 +27,7 @@ class IntersectionHistory {
       int step = CGAL::iterator_distance(hits[m].e, hits[n].e) % support.size();
       eit e = hits[m].e;
       for (int i = 0; i < step; i++) {
-        std::cout << "Insert " << e->target() << std::endl;
+        /* std::cout << "Insert " << e->target() << std::endl; */
         c->push_back(e->target());
         e++;
       }
@@ -60,8 +60,8 @@ public:
     }
 
     for (int i = size - count; i < size; i++) {
-      std::cout << "Insert " << hits[i].p << " with state " << hits[i].state
-                << std::endl;
+      /* std::cout << "Insert " << hits[i].p << " with state " << hits[i].state */
+      /*           << std::endl; */
       c->push_back(hits[i].p);
     }
     count = 0;
@@ -148,8 +148,8 @@ void PowerDiagram::crop_algorithm() {
     for (auto v : dual_rt.finite_vertex_handles()) {
       vertices.insert(v->point());
     }
-    std::cout << "Dimension 1 with " << vertices.size() << " vertices"
-              << std::endl;
+    /* std::cout << "Dimension 1 with " << vertices.size() << " vertices" */
+    /*           << std::endl; */
     std::list<K::Line_2> lines;
     FACE_CASE d1 = CURRENT_INFINITE_NEXT_INFINITE;
     for (auto v = vertices.begin(); v != vertices.end(); ++v) {
@@ -184,7 +184,7 @@ void PowerDiagram::crop_algorithm() {
         lines.pop_front();
       }
       if (c.size() > 2) {
-        std::cout << "Add cell for " << *v << std::endl;
+        /* std::cout << "Add cell for " << *v << std::endl; */
         cropped_cells.insert({*v, polygon(c.begin(), c.end())});
       }
     }
@@ -207,7 +207,7 @@ void PowerDiagram::crop_algorithm() {
     if (cropped_cells.contains(v)) {
       continue;
     } else {
-      std::cout << "Rotating around " << v << std::endl;
+      /* std::cout << "Rotating around " << v << std::endl; */
     }
     auto current_f = f;
     auto last_f = f;
@@ -231,7 +231,7 @@ void PowerDiagram::crop_algorithm() {
       if (not current_is_infinite && inside_support[current_f]) {
         vertices.push_back(center[current_f]);
         support_hits.need_add_support_vertices = false;
-        std::cout << "Insert " << center[current_f] << std::endl;
+        /* std::cout << "Insert " << center[current_f] << std::endl; */
         center_inserted = true;
       }
 

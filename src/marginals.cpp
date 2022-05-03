@@ -41,9 +41,8 @@ void operator>>(std::istream &in, std::vector<discrete_dist> &dists) {
   }
 }
 
-WassersteinBarycenter::WassersteinBarycenter(K::Iso_rectangle_2 bbox,
-                                             const char *filename,
-                                             std::list<double> coefs) {
+void WassersteinBarycenter::read_marginals_data(const char *filename,
+                                                std::list<double> coefs) {
   std::ifstream read_dist(filename);
   read_dist >> marginals;
   if (marginals.size() == 0) {
@@ -67,6 +66,17 @@ WassersteinBarycenter::WassersteinBarycenter(K::Iso_rectangle_2 bbox,
     set_marginal_coefficients(coefs);
   }
 
+  std::cout << "We set marginals coeficients as: ";
+  for (auto coef : marginal_coefficients) {
+    std::cout << coef << ", ";
+  }
+  std::cout << "\b\b." << std::endl;
+}
+
+WassersteinBarycenter::WassersteinBarycenter(K::Iso_rectangle_2 bbox,
+                                             const char *filename,
+                                             std::list<double> coefs) {
+  read_marginals_data(filename, coefs);
   if (not bbox.is_degenerate()) {
     support_box = bbox;
     crop_style = Rectangle;
@@ -79,29 +89,7 @@ WassersteinBarycenter::WassersteinBarycenter(K::Iso_rectangle_2 bbox,
 WassersteinBarycenter::WassersteinBarycenter(PowerDiagram::polygon support,
                                              const char *filename,
                                              std::list<double> coefs) {
-  std::ifstream read_dist(filename);
-  read_dist >> marginals;
-  if (marginals.size() == 0) {
-    std::cout << "Find no data in file " << filename << " available, exit."
-              << std::endl;
-    std::exit(EXIT_SUCCESS);
-  }
-  if (marginals.back().size() == 0) {
-    marginals.pop_back();
-  }
-
-  n_marginals = marginals.size();
-  for (auto dist : marginals) {
-    dims.push_back(dist.size());
-  }
-
-  if (coefs.size() != n_marginals + 1) {
-    marginal_coefficients =
-        std::list<double>(n_marginals + 1, 1.0 / (n_marginals + 1));
-  } else {
-    set_marginal_coefficients(coefs);
-  }
-
+  read_marginals_data(filename, coefs);
   if (support.size() != 0) {
     support_polygon = support;
     crop_style = Polygon;
@@ -115,8 +103,8 @@ std::list<double>
 WassersteinBarycenter::get_marginal_coefficients(int argc, char *argv[]) {
   std::list<double> coefs;
   if (argc > 1) {
-    for (int i = 0; i < argc; i++) {
-      std::string coef_string = argv[i + 1];
+    for (int i = 1; i < argc; i++) {
+      std::string coef_string = argv[i];
       double coef = std::stod(coef_string);
       if (coef < 0) {
         std::cerr << "The coefficient " << coef << " is not valid."

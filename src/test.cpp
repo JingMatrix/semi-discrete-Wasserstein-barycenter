@@ -3,8 +3,6 @@
 
 double test_area() {
   K::Iso_rectangle_2 bbox{0, 0, 1, 1};
-  CGAL::IO::set_pretty_mode(std::cout);
-  CGAL::IO::set_pretty_mode(std::cerr);
   PowerDiagram pd("data/weight_points");
   pd.crop(bbox);
   pd.gnuplot();
@@ -13,6 +11,8 @@ double test_area() {
   for (auto cit = data_area.begin(); cit != data_area.end(); ++cit) {
     check_area += cit->second;
   }
+  std::cout << "This diagram has " << pd.borders.size() << " valid borders."
+            << std::endl;
   return check_area;
 }
 
@@ -25,9 +25,14 @@ double find_barycenter(int argc, char *argv[]) {
 }
 
 int main(int argc, char *argv[]) {
+  CGAL::IO::set_pretty_mode(std::cout);
+  CGAL::IO::set_pretty_mode(std::cerr);
+
   /* double area = test_area(); */
   /* std::cout << "Area test for cell crop algorithm get: " << area << std::endl; */
+
   double error = find_barycenter(argc, argv);
   std::cout << "Wasserstein barycenter searching gets error: " << error
             << std::endl;
+
 }
