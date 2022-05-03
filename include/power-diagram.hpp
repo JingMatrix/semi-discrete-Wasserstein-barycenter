@@ -16,6 +16,15 @@ typedef CGAL::Exact_predicates_exact_constructions_kernel K;
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 #endif
 
+#ifdef USE_EXACT_KERNEL
+struct compSeg_2 {
+  bool operator()(const K::Segment_2 &s1, const K::Segment_2 &s2) const {
+    /* return s1.squared_length() < s2.squared_length(); */
+	  return true;
+  }
+};
+#endif
+
 class PowerDiagram {
   typedef CGAL::Regular_triangulation_2<K> Regular_triangulation;
 
@@ -91,6 +100,12 @@ public:
   /* For integration */
   vertex_with_data area();
   vertex_with_data integral(gsl_monte_function &f);
+
+#ifdef USE_EXACT_KERNEL
+  std::map<K::Segment_2, K::Segment_2, compSeg_2> borders;
+#else
+  std::unordered_map<K::Segment_2, K::Segment_2> borders;
+#endif
 
   /* Draw power diagram through different interfaces. */
   void plot_mma();
