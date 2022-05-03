@@ -60,8 +60,6 @@ public:
     }
 
     for (int i = size - count; i < size; i++) {
-      /* std::cout << "Insert " << hits[i].p << " with state " << hits[i].state */
-      /*           << std::endl; */
       c->push_back(hits[i].p);
     }
     count = 0;
@@ -71,6 +69,13 @@ public:
     if (need_close) {
       insert_vertices(size - 1, 0, c);
     }
+  }
+
+  K::Point_2 next_intersection_point() {
+    if (count == 0) {
+      std::exit(EXIT_FAILURE);
+    }
+    return hits[size - count].p;
   }
 
   chain get_points() {
@@ -137,10 +142,10 @@ void PowerDiagram::crop_algorithm() {
   if (dual_rt.dimension() == 1) {
     struct compX {
       bool operator()(const vertex &v1, const vertex &v2) const {
-        if (v1.x() == v2.x()) {
-          return v1.y() < v2.y();
+        if (v1.point() == v2.point()) {
+          return v1.weight() < v2.weight();
         } else {
-          return v1.x() < v2.x();
+          return v1.point() < v2.point();
         }
       }
     };
@@ -272,7 +277,7 @@ void PowerDiagram::crop_algorithm() {
         bool boder_exists = borders.contains(edge.opposite());
 
         if (not boder_exists && support_hits.get_count() == 1) {
-          auto p = support_hits.get_points().front();
+          auto p = support_hits.next_intersection_point();
           if (center_inserted) {
             borders.insert({edge, K::Segment_2{center[current_f], p}});
           } else if (next_insert_center) {

@@ -20,7 +20,11 @@ typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 struct compSeg_2 {
   bool operator()(const K::Segment_2 &s1, const K::Segment_2 &s2) const {
     /* return s1.squared_length() < s2.squared_length(); */
-	  return true;
+    if (s1.source() == s2.source()) {
+      return s1.target() < s2.target();
+    } else {
+      return s1.source() < s2.source();
+    }
   }
 };
 #endif
@@ -34,8 +38,10 @@ public:
   typedef CGAL::Polygon_2<K> polygon;
 #ifdef USE_EXACT_KERNEL
   typedef std::map<vertex, double> vertex_with_data;
+  typedef std::map<vertex, std::string> vertex_with_label;
 #else
   typedef std::unordered_map<vertex, double> vertex_with_data;
+  typedef std::unordered_map<vertex, std::string> vertex_with_label;
 #endif
 
 private:
@@ -109,6 +115,8 @@ public:
 
   /* Draw power diagram through different interfaces. */
   void plot_mma();
+  bool use_lable = false;
+  vertex_with_label label;
   void gnuplot();
 
   /* Access some info from the regular triangulation. */
