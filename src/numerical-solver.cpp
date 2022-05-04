@@ -40,6 +40,13 @@ void WassersteinBarycenter::update_partition() {
   partition = PowerDiagram(vertices.begin(), vertices.end());
   initialize_support();
   auto cell_area = partition.area();
+  {
+    int n = partition.number_of_hidden_vertices();
+    if (n > 0) {
+      std::cout << "Current partition has " << n << " hidden vertices."
+                << std::endl;
+    }
+  }
   partition.use_lable = true;
   partition.label.clear();
 
@@ -123,18 +130,21 @@ void WassersteinBarycenter::print_info() {
                 CGAL::to_double(support_points[j].y()));
   }
   if (valid_column_variables.size() != n_column_variables) {
-    std::cout << "In the result above, we remove the following points "
-                 "combinations in the discrete plan:"
-              << std::endl;
-    for (int j : dumped_column_variables) {
-      std::cout << "(";
-      for (auto n : column_variables[j]) {
-        std::cout << n << ", ";
+    if (n_column_variables < 10) {
+      std::cout << "In the result above, we remove the following points "
+                   "combinations in the discrete plan:"
+                << std::endl;
+      for (int j : dumped_column_variables) {
+        std::cout << "(";
+        for (auto n : column_variables[j]) {
+          std::cout << n << ", ";
+        }
+        std::cout << "\b\b), ";
+        potential[j] = 0;
       }
-      std::cout << "\b\b), ";
-      potential[j] = 0;
+      std::cout << "\b\b.";
     }
-    std::cout << "\b\b. It remains " << valid_column_variables.size()
+    std::cout << "It remains " << valid_column_variables.size()
               << " variables with (internal) index: ";
     for (auto j : valid_column_variables) {
       std::cout << j << ", ";
@@ -147,7 +157,9 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   tolerance = e;
   initialize_lp();
   int n_iteration = 0;
-  for (int i = 0; i < step; i++) {
+  int i = 0;
+  /* std::list<std::vector<double>> plans; */
+  for (; i < step; i++) {
     auto old_plan = discrete_plan;
     update_discrete_plan();
     if (old_plan == discrete_plan) {
@@ -157,6 +169,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       } else if (n_iteration == 0) {
         std::cout << "Semi-discrete optimal transport solver is not working."
                   << std::endl;
+        dump_semi_discrete_solver();
       }
       break;
     } else {
@@ -167,4 +180,10 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
     }
   }
   partition.gnuplot();
+  if (i == step) {
+    std::cout << std::endl
+              << "Finish the program after required " << step
+              << " iterations, the barycenter may not be found yet."
+              << std::endl;
+  }
 }

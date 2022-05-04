@@ -1,6 +1,5 @@
 #include <barycenter.hpp>
 #include <gsl/gsl_matrix.h>
-#include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_vector.h>
 
 void get_gradient(WassersteinBarycenter *barycenter_problem, gsl_vector *f) {
@@ -133,17 +132,18 @@ int WassersteinBarycenter::semi_discrete(int steps) {
   }
 
   const gsl_multiroot_fdfsolver_type *T = gsl_multiroot_fdfsolver_hybridsj;
-  gsl_multiroot_fdfsolver *s = gsl_multiroot_fdfsolver_alloc(T, FDF.n);
-  gsl_multiroot_fdfsolver_set(s, &FDF, x);
+  semi_discrete_solver = gsl_multiroot_fdfsolver_alloc(T, FDF.n);
+  gsl_multiroot_fdfsolver_set(semi_discrete_solver, &FDF, x);
 
   int status = 0;
   int iter = 0;
   do {
-    status = gsl_multiroot_fdfsolver_iterate(s);
+    status = gsl_multiroot_fdfsolver_iterate(semi_discrete_solver);
     if (status == GSL_EBADFUNC) {
-      std::cout << "The iteration encountered a singular point where the "
-                   "function or its derivative evaluated to Inf or NaN."
-                << std::endl;
+      /* std::cout << "The iteration encountered a singular point where the " */
+      /*              "function or its derivative evaluated to Inf or NaN." */
+      /*           << std::endl; */
+      /* dump_semi_discrete_solver(); */
       break;
     }
     if (status == GSL_ENOPROG) {
@@ -153,7 +153,7 @@ int WassersteinBarycenter::semi_discrete(int steps) {
       break;
     }
 
-    status = gsl_multiroot_test_residual(s->f, tolerance);
+    status = gsl_multiroot_test_residual(semi_discrete_solver->f, tolerance);
     iter++;
   } while (status == GSL_CONTINUE && iter < steps);
 
@@ -169,8 +169,24 @@ int WassersteinBarycenter::semi_discrete(int steps) {
     potential[valid_column_variables[i]] -= average;
   }
 
-  gsl_multiroot_fdfsolver_free(s);
   gsl_vector_free(x);
 
   return iter;
+}
+
+void WassersteinBarycenter::dump_semi_discrete_solver() {
+  /* gsl_matrix *df = semi_discrete_solver->df; */
+  const int n = valid_column_variables.size();
+  gsl_matrix *jacobian = gsl_matrix_alloc(n, n);
+  get_jacobian_uniform_measure(this, jacobian);
+  std::cout << "Current jacobian is:" << std::endl;
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < n; j++) {
+      std::printf("%.3f\t", gsl_matrix_get(jacobian, i, j));
+    }
+    std::cout << std::endl;
+  }
+  gsl_matrix_free(jacobian);
+  /* std::cout << "Current partition has " << partition.borders.size() */
+  /*           << " borders." << std::endl; */
 }

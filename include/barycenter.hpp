@@ -1,6 +1,7 @@
 #pragma once
 #include "power-diagram.hpp"
 #include <glpk.h>
+#include <gsl/gsl_multiroots.h>
 
 class WassersteinBarycenter {
 
@@ -69,6 +70,8 @@ private:
   /* Numerical solution */
   /* Semi discrete optimal transport solver */
   int semi_discrete(int step);
+  gsl_multiroot_fdfsolver *semi_discrete_solver;
+  void dump_semi_discrete_solver();
   void print_info();
 
 public:
@@ -94,5 +97,8 @@ public:
   double tolerance;
   double error = std::numeric_limits<double>::max();
 
-  ~WassersteinBarycenter() { glp_delete_prob(lp); }
+  ~WassersteinBarycenter() {
+    glp_delete_prob(lp);
+    gsl_multiroot_fdfsolver_free(semi_discrete_solver);
+  }
 };
