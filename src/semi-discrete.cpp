@@ -144,6 +144,17 @@ int WassersteinBarycenter::semi_discrete(int steps) {
       /*              "function or its derivative evaluated to Inf or NaN." */
       /*           << std::endl; */
       /* dump_semi_discrete_solver(); */
+      if (partition.number_of_hidden_vertices() == 0) {
+        std::cout << "Encounter sigularity for unknown reason, dump data for "
+                     "analysis."
+                  << std::endl;
+        dump_semi_discrete_solver();
+        partition.gnuplot();
+        print_info();
+        std::cout << "Current partition has " << partition.borders.size()
+                  << " borders." << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
       break;
     }
     if (status == GSL_ENOPROG) {
@@ -187,6 +198,4 @@ void WassersteinBarycenter::dump_semi_discrete_solver() {
     std::cout << std::endl;
   }
   gsl_matrix_free(jacobian);
-  /* std::cout << "Current partition has " << partition.borders.size() */
-  /*           << " borders." << std::endl; */
 }

@@ -142,7 +142,7 @@ void WassersteinBarycenter::print_info() {
         std::cout << "\b\b), ";
         potential[j] = 0;
       }
-      std::cout << "\b\b.";
+      std::cout << "\b\b. ";
     }
     std::cout << "It remains " << valid_column_variables.size()
               << " variables with (internal) index: ";
