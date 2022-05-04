@@ -35,11 +35,11 @@ add_library(
   barycenter
   src/marginals.cpp
   src/semi-discrete.cpp
-  src/numerical_solver.cpp
+  src/numerical-solver.cpp
   src/linear-programming.cpp
 )
 
-# add_executable(draw-power-diagram src/qt_draw_example.cpp)
+# add_executable(draw-power-diagram src/qt-draw-example.cpp)
 add_executable(test src/test.cpp)
 
 target_link_libraries(

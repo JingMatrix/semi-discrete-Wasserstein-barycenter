@@ -23,7 +23,7 @@ double find_barycenter(int argc, char *argv[]) {
   auto default_problem = WassersteinBarycenter(
       K::Iso_rectangle_2{0, 0, 1, 1}, "data/marginals",
       WassersteinBarycenter::get_marginal_coefficients(argc, argv));
-  default_problem.iteration_solver(2);
+  default_problem.iteration_solver(10);
   return default_problem.sum_error;
 }
 
@@ -32,10 +32,10 @@ int main(int argc, char *argv[]) {
   /* CGAL::IO::set_pretty_mode(std::cerr); */
 
   /* double area = test_area_and_border(); */
-  /* std::cout << "Area test for cell crop algorithm get: " << area << std::endl; */
+  /* std::cout << "Area test for cell crop algorithm get: " << area <<
+   * std::endl; */
 
   double error = find_barycenter(argc, argv);
-  std::cout << "Wasserstein barycenter searching gets error: " << error
-            << std::endl;
-
+  std::cout << "Wasserstein barycenter searching gets result with error: "
+            << error << std::endl;
 }

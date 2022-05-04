@@ -4,7 +4,7 @@
 #include <gsl/gsl_vector.h>
 
 void get_gradient(WassersteinBarycenter *barycenter_problem, gsl_vector *f) {
-  std::vector<int> &variables = barycenter_problem->valid_column_variables;
+  const std::vector<int> &variables = barycenter_problem->valid_column_variables;
   const int n_variables = variables.size();
   for (int i = 0; i < n_variables; i++) {
     gsl_vector_set(f, i, barycenter_problem->gradient[variables[i]]);
@@ -13,7 +13,7 @@ void get_gradient(WassersteinBarycenter *barycenter_problem, gsl_vector *f) {
 
 int set_potential(WassersteinBarycenter *barycenter_problem,
                   const gsl_vector *x) {
-  std::vector<int> &variables = barycenter_problem->valid_column_variables;
+  const std::vector<int> &variables = barycenter_problem->valid_column_variables;
   const int n_variables = variables.size();
   for (int i = 0; i < n_variables; i++) {
     double p = gsl_vector_get(x, i);
@@ -31,7 +31,7 @@ int set_potential(WassersteinBarycenter *barycenter_problem,
 
 void get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
                                   gsl_matrix *df) {
-  std::vector<int> &variables = barycenter_problem->valid_column_variables;
+  const std::vector<int> &variables = barycenter_problem->valid_column_variables;
   const int n_variables = variables.size();
   auto &borders = barycenter_problem->partition.borders;
   for (int i = 0; i < n_variables; i++) {

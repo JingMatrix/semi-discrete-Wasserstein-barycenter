@@ -54,7 +54,6 @@ private:
 
   /* linear programming part */
   glp_prob *lp = glp_create_prob();
-  bool lp_initialized = false;
   void initialize_lp();
   int n_row_variables = 0;
   int n_column_variables = 1;
@@ -63,8 +62,9 @@ private:
   std::vector<int> dims;
   std::unordered_set<int> dumped_column_variables;
   /* default discrete plan is the independent plan */
-  std::vector<double> discrete_plan;
+  std::vector<double> discrete_plan = {0};
   void update_discrete_plan();
+  void update_column_variables();
 
   /* Numerical solution */
   /* Semi discrete optimal transport solver */
