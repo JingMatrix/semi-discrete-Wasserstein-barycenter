@@ -32,10 +32,11 @@ int main(int argc, char *argv[]) {
   /* CGAL::IO::set_pretty_mode(std::cerr); */
 
   /* double area = test_area_and_border(); */
-  /* std::cout << "Area test for cell crop algorithm get: " << area <<
-   * std::endl; */
+  /* std::cout << "Area test for cell crop algorithm get: " << area << std::endl; */
 
   double error = find_barycenter(argc, argv);
   std::cout << "Wasserstein barycenter searching gets result with error: "
             << error << std::endl;
+
 }
+

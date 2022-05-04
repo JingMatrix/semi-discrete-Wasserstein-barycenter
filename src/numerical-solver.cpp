@@ -51,8 +51,11 @@ void WassersteinBarycenter::update_partition() {
   partition.label.clear();
 
   int i = 0;
+  /* std::cout << std::endl; */
   for (int j : valid_column_variables) {
     auto v = vertices[i];
+    /* std::cerr << v << " inserted and has area " << cell_area[v] << "." */
+    /*           << std::endl; */
     i++;
     /* The gradient here has different sign from the paper */
     gradient[j] = discrete_plan[j] - cell_area[v];
@@ -83,7 +86,14 @@ void WassersteinBarycenter::update_discrete_plan() {
     update_partition();
   }
 
+  /* double average = 0; */
+  /* for (int j = 1; j <= n_column_variables; j++) { */
+  /*   average += potential[j]; */
+  /* } */
+  /* average /= n_column_variables; */
+
   for (int j = 1; j <= n_column_variables; j++) {
+    /* potential[j] -= average; */
     glp_set_obj_coef(lp, j, potential[j]);
   }
 
@@ -174,6 +184,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       break;
     } else {
       update_column_variables();
+      potential = std::vector<double>(n_column_variables + 1);
       std::cout << std::endl;
       n_iteration = semi_discrete(30);
       print_info();

@@ -303,8 +303,9 @@ void PowerDiagram::crop_algorithm() {
           /* std::cout << "Traversing the support." << std::endl; */
           support_hits.need_insert_support_vertices = true;
           K::Segment_2 edge = {v.point(), v_end.point()};
-          borders.insert({edge, K::Segment_2{center[current_f],
-                                             center[current_f->neighbor(i)]}});
+          auto intersection_points = support_hits.intersection_points();
+          borders.insert({edge, K::Segment_2{intersection_points.front(),
+                                             intersection_points.back()}});
         }
       }
 

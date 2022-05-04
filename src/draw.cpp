@@ -42,8 +42,8 @@ void PowerDiagram::gnuplot() {
     }
     for (auto cell : cropped_cells) {
       auto poly = cell.second;
-      double p = CGAL::to_double(cell.first.weight() - min_radius + 0.0001);
-      point << cell.first.point() << " " << std::sqrt(p) << " "
+      point << cell.first.point() << " "
+            << cell.first.weight() - min_radius + 0.0001 << " "
             << label[cell.first] << std::endl;
       for (auto eit = poly.edges_begin(); eit != poly.edges_end(); ++eit) {
         line << eit->source() << " " << eit->to_vector() << std::endl;
@@ -54,7 +54,7 @@ void PowerDiagram::gnuplot() {
         << std::endl
         << "unset key" << std::endl
         << "plot \"data/pd_lines\" with vector dt 2 lt 20, "
-        << "\"data/pd_points\" with circles, ";
+        << "\"data/pd_points\" using 1:2:(sqrt($3)) with circles, ";
     if (use_lable) {
       cmd << "\"data/pd_points\" using 1:2:4 with labels" << std::endl;
     } else {
