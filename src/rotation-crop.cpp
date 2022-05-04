@@ -17,28 +17,22 @@ class IntersectionHistory {
     FACE_CASE state;
   };
   typedef PowerDiagram::chain chain;
-  std::vector<intersection> hits;
+  std::list<intersection> history{};
   const FACE_CASE *debug_info;
-  int size = 0;
-  int count = 0;
   int support_size = 0;
-  void insert_vertices(int m, int n, chain *c) {
-    if (m >= 0 && m < size && n >= 0 && n < size) {
-      int step = CGAL::iterator_distance(hits[m].e, hits[n].e) % support.size();
-      eit e = hits[m].e;
-      for (int i = 0; i < step; i++) {
-        /* std::cout << "Insert " << e->target() << std::endl; */
-        c->push_back(e->target());
-        e++;
-      }
+  void insert_vertices(chain *c) {
+    if (current.size() == 0 || history.size() == 0) {
+      return;
+    }
+    int step = CGAL::iterator_distance(history.back().e, current.front().e) %
+               support.size();
+    eit e = history.back().e;
+    for (int i = 0; i < step; i++) {
+      c->push_back(e->target());
+      e++;
     }
   }
 
-  void insert(eit e, K::Point_2 p) {
-    hits.push_back({e, p, *debug_info});
-    count++;
-    size++;
-  }
   bool need_close = false;
 
 public:
@@ -47,44 +41,49 @@ public:
     support_size = support.size();
   };
 
-  bool need_add_support_vertices = false;
+  bool need_insert_support_vertices = false;
 
-  int get_count() { return count; }
+  std::list<intersection> current{};
+  int get_count() { return current.size(); }
+
   void extend_chain(chain *c) {
-    if (need_add_support_vertices) {
-      insert_vertices(size - 1 - count, size - count, c);
+    if (need_insert_support_vertices) {
+      insert_vertices(c);
     }
-
-    if (c->size() == 0 && count > 0) {
+    int n = get_count();
+    if (c->size() == 0 && n > 0) {
       need_close = true;
     }
-
-    for (int i = size - count; i < size; i++) {
-      c->push_back(hits[i].p);
+    for (int i = 0; i < n; i++) {
+      if (i == 2) {
+        break;
+      }
+      history.push_back(current.front());
+      c->push_back(current.front().p);
+      current.pop_front();
     }
-    count = 0;
+    if (current.size() > 0) {
+      need_insert_support_vertices = true;
+      extend_chain(c);
+    }
   }
 
   void close_chian(chain *c) {
     if (need_close) {
-      insert_vertices(size - 1, 0, c);
+      current = {history.front()};
+      insert_vertices(c);
+      current.clear();
     }
   }
 
-  K::Point_2 next_intersection_point() {
-    if (count == 0) {
-      std::exit(EXIT_FAILURE);
-    }
-    return hits[size - count].p;
-  }
-
-  chain get_points() {
+  chain intersection_points() {
     chain c;
-    for (auto h : hits) {
-      c.push_back(h.p);
+    for (auto hits : current) {
+      c.push_back(hits.p);
     }
     return c;
   }
+
   template <typename T> void intersect(T &edge) {
     eit e = support.edges_circulator();
     for (int i = 0; i < support_size; i++) {
@@ -92,42 +91,34 @@ public:
         K::Point_2 p;
         auto obj = CGAL::intersection(*e, edge);
         if (CGAL::assign(p, obj)) {
-          insert(e, p);
+          current.push_back({e, p, *debug_info});
         }
       }
       e++;
     }
   }
 
-  void reverse_last_two() {
-    if (size >= 2) {
-      auto tmp = hits[size - 2];
-      hits[size - 2] = hits[size - 1];
-      hits[size - 1] = tmp;
-    }
-  }
-
   void fix_orientation(PowerDiagram::vertex &v1, PowerDiagram::vertex &v2) {
-    if (count != 2) {
+    if (get_count() < 2) {
       return;
     }
-    bool need_reverse_last_two = false;
-    auto &p1 = hits[size - 2].p;
-    auto &p2 = hits.back().p;
+    bool need_reverse = false;
+    auto &p1 = current.front().p;
+    auto &p2 = current.back().p;
     auto side1 = CGAL::orientation(p1, p2, v1.point());
     auto side2 = CGAL::orientation(p1, p2, v2.point());
     if (side1 == side2) {
       if (v1.weight() < v2.weight() && side1 == CGAL::LEFT_TURN) {
-        need_reverse_last_two = true;
+        need_reverse = true;
       }
       if (v1.weight() > v2.weight() && side1 == CGAL::RIGHT_TURN) {
-        need_reverse_last_two = true;
+        need_reverse = true;
       }
     } else if (side1 == CGAL::RIGHT_TURN) {
-      need_reverse_last_two = true;
+      need_reverse = true;
     }
-    if (need_reverse_last_two) {
-      reverse_last_two();
+    if (need_reverse) {
+      current.reverse();
     }
   }
 };
@@ -168,20 +159,21 @@ void PowerDiagram::crop_algorithm() {
       auto support_hits = IntersectionHistory(cropped_shape, &d1);
       support_hits.intersect(lines.back());
       if (v == vertices.end()) {
-        support_hits.reverse_last_two();
+        support_hits.current.reverse();
         --v;
       } else {
         auto p1 = v->point();
         auto p2 = (--v)->point();
         auto s = K::Segment_2(p1, p2);
-        auto border = K::Segment_2(support_hits.get_points().front(),
-                                   support_hits.get_points().back());
+        auto border = K::Segment_2(support_hits.intersection_points().front(),
+                                   support_hits.intersection_points().back());
         borders.insert({s, border});
       }
       if (lines.size() == 2) {
-        support_hits.need_add_support_vertices = true;
+        support_hits.extend_chain(&c);
+        support_hits.need_insert_support_vertices = true;
         support_hits.intersect(lines.front());
-        support_hits.reverse_last_two();
+        support_hits.current.reverse();
       }
       support_hits.extend_chain(&c);
       support_hits.close_chian(&c);
@@ -235,7 +227,7 @@ void PowerDiagram::crop_algorithm() {
 
       if (not current_is_infinite && inside_support[current_f]) {
         vertices.push_back(center[current_f]);
-        support_hits.need_add_support_vertices = false;
+        support_hits.need_insert_support_vertices = false;
         /* std::cout << "Insert " << center[current_f] << std::endl; */
         center_inserted = true;
       }
@@ -277,7 +269,7 @@ void PowerDiagram::crop_algorithm() {
         bool boder_exists = borders.contains(edge.opposite());
 
         if (not boder_exists && support_hits.get_count() == 1) {
-          auto p = support_hits.next_intersection_point();
+          auto p = support_hits.intersection_points().front();
           if (center_inserted) {
             borders.insert({edge, K::Segment_2{center[current_f], p}});
           } else if (next_insert_center) {
@@ -295,21 +287,24 @@ void PowerDiagram::crop_algorithm() {
       if (vertices.size() > 0) {
         if (support_hits.get_count() == 0 && not center_inserted) {
           /* std::cout << "Walking outside the support." << std::endl; */
-          support_hits.need_add_support_vertices = true;
+          support_hits.need_insert_support_vertices = true;
         }
 
         if (not inside_support[current_f] &&
             inside_support[current_f->neighbor(i)] &&
             support_hits.get_count() == 1) {
           /* std::cout << "Entering the support." << std::endl; */
-          support_hits.need_add_support_vertices = true;
+          support_hits.need_insert_support_vertices = true;
         }
 
         if (not inside_support[current_f] &&
             not inside_support[current_f->neighbor(i)] &&
             support_hits.get_count() > 1) {
           /* std::cout << "Traversing the support." << std::endl; */
-          support_hits.need_add_support_vertices = true;
+          support_hits.need_insert_support_vertices = true;
+          K::Segment_2 edge = {v.point(), v_end.point()};
+          borders.insert({edge, K::Segment_2{center[current_f],
+                                             center[current_f->neighbor(i)]}});
         }
       }
 

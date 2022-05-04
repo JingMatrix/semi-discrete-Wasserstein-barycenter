@@ -61,8 +61,10 @@ public:
     std::ifstream in(data_filename);
     Regular_triangulation::Weighted_point wp;
     std::vector<Regular_triangulation::Weighted_point> wpoints;
-    while (in >> wp) {
-      wpoints.push_back(wp);
+    double x, y, w;
+    while (in >> x >> y >> w) {
+      wpoints.push_back({K::Point_2(x, y), w});
+      in.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
     dual_rt = Regular_triangulation(wpoints.begin(), wpoints.end());
   }

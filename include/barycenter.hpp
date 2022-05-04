@@ -55,7 +55,6 @@ private:
   /* linear programming part */
   glp_prob *lp = glp_create_prob();
   bool lp_initialized = false;
-  bool update_lp = true;
   void initialize_lp();
   int n_row_variables = 0;
   int n_column_variables = 1;
@@ -65,11 +64,12 @@ private:
   std::unordered_set<int> dumped_column_variables;
   /* default discrete plan is the independent plan */
   std::vector<double> discrete_plan;
+  void update_discrete_plan();
 
   /* Numerical solution */
-  double step_size;
   /* Semi discrete optimal transport solver */
-  void semi_discrete(double tolerance, int step);
+  void semi_discrete(int step);
+  void print_info();
 
 public:
   PowerDiagram partition;
@@ -81,7 +81,7 @@ public:
                         std::list<double> marginal_coefficients = {});
   static std::list<double> get_marginal_coefficients(int argc, char *argv[]);
 
-  void iteration_solver(unsigned int step, double stepsize = 0.01);
+  void iteration_solver(unsigned int step, double tolerance = 10e-5);
 
   std::vector<std::vector<int>> column_variables{{0}};
   std::vector<int> valid_column_variables;
@@ -90,7 +90,8 @@ public:
   std::vector<K::Point_2> support_points{K::Point_2(0, 0)};
   std::vector<double> potential;
   std::vector<double> gradient;
-  void update_info();
+  void update_potential();
+  double tolerance;
   double sum_error = 0;
 
   ~WassersteinBarycenter() { glp_delete_prob(lp); }

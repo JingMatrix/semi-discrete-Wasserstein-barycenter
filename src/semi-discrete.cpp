@@ -3,64 +3,63 @@
 #include <gsl/gsl_multiroots.h>
 #include <gsl/gsl_vector.h>
 
-int jacobian_uniform_measure(const gsl_vector *x, void *p, gsl_vector *f,
-                             gsl_matrix *df) {
-  WassersteinBarycenter *barycenter_problem = (WassersteinBarycenter *)p;
+void get_gradient(WassersteinBarycenter *barycenter_problem, gsl_vector *f) {
   std::vector<int> &variables = barycenter_problem->valid_column_variables;
-  auto &borders = barycenter_problem->partition.borders;
-  /* for (auto f : borders) { */
-  /*   std::cerr << f.first << "\t--+--\t" << f.second << std::endl; */
-  /* } */
-  /* for (auto p : barycenter_problem->support_points) { */
-  /*   std::cout << p << std::endl; */
-  /* } */
-  barycenter_problem->partition.gnuplot();
   const int n_variables = variables.size();
   for (int i = 0; i < n_variables; i++) {
-    barycenter_problem->potential[variables[i]] = gsl_vector_get(x, i);
-  }
-  barycenter_problem->update_info();
-  for (int i = 0; i < n_variables; i++) {
     gsl_vector_set(f, i, barycenter_problem->gradient[variables[i]]);
-    /* std::cout << "Set gradient function's component " << variables[i] << " to
-     * " */
-    /*           << gsl_vector_get(f, i) << "." << std::endl; */
+  }
+}
+
+int set_potential(WassersteinBarycenter *barycenter_problem,
+                  const gsl_vector *x) {
+  std::vector<int> &variables = barycenter_problem->valid_column_variables;
+  const int n_variables = variables.size();
+  for (int i = 0; i < n_variables; i++) {
+    double p = gsl_vector_get(x, i);
+    if (gsl_isnan(p) != 1) {
+      barycenter_problem->potential[variables[i]] = p;
+    } else {
+      std::cerr << "GSL is trying NaN as a gusess for variable " << variables[i]
+                << ", stop here." << std::endl;
+      return GSL_FAILURE;
+    }
+  }
+  barycenter_problem->update_potential();
+  return GSL_SUCCESS;
+}
+
+void get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
+                                  gsl_matrix *df) {
+  std::vector<int> &variables = barycenter_problem->valid_column_variables;
+  const int n_variables = variables.size();
+  auto &borders = barycenter_problem->partition.borders;
+  for (int i = 0; i < n_variables; i++) {
     for (int j = 0; j < n_variables; j++) {
       if (j <= i) {
         continue;
       }
       K::Segment_2 s(barycenter_problem->support_points[variables[i]],
                      barycenter_problem->support_points[variables[j]]);
-      /* std::cout << "Current segment: " << s << "." << std::endl; */
+      /* std::cout << "Current segment for " << variables[i] << " and " */
+      /*           << variables[j] << " is : " << s << "." << std::endl; */
       K::Segment_2 border{K::Point_2(0, 0), K::Point_2(0, 0)};
-      double p;
+      double p = 0;
       bool has_border = true;
       if (borders.contains(s)) {
         border = borders[s];
       } else if (borders.contains(s.opposite())) {
         border = borders[s.opposite()];
       } else {
-        /* std::cout << "No border intersection found for cells of ("; */
-        /* for (auto n : barycenter_problem->column_variables[variables[i]]) {
-         */
-        /*   std::cout << n << ", "; */
-        /* } */
-        /* std::cout << "\b\b) and ("; */
-        /* for (auto n : barycenter_problem->column_variables[variables[j]]) {
-         */
-        /*   std::cout << n << ", "; */
-        /* } */
-        /* std::cout << "\b\b)." << std::endl; */
         has_border = false;
-        p = 0;
       }
       if (has_border) {
         p = std::sqrt(
                 CGAL::to_double(border.squared_length() / s.squared_length())) /
             barycenter_problem->support_area;
       }
-      std::cout << "Set jacobian for variables (" << variables[i] << ", "
-                << variables[j] << ") as " << p << std::endl;
+      /* std::cout << "Set jacobian for variables (" << variables[i] << ", " */
+      /*           << variables[j] << ") as " << p << std::endl; */
       gsl_matrix_set(df, i, j, p);
       gsl_matrix_set(df, j, i, p);
     }
@@ -76,20 +75,53 @@ int jacobian_uniform_measure(const gsl_vector *x, void *p, gsl_vector *f,
     }
     gsl_matrix_set(df, i, i, -sum);
   }
-
-  return GSL_SUCCESS;
 }
 
-void WassersteinBarycenter::semi_discrete(double tolerance, int step) {
+int gradient_fn(const gsl_vector *x, void *p, gsl_vector *f) {
+  WassersteinBarycenter *barycenter_problem = (WassersteinBarycenter *)p;
+  int state = set_potential(barycenter_problem, x);
+  if (state == GSL_SUCCESS) {
+    get_gradient(barycenter_problem, f);
+    return GSL_SUCCESS;
+  } else {
+    return GSL_FAILURE;
+  }
+}
+
+int jacobian_uniform_measure(const gsl_vector *x, void *p, gsl_matrix *df) {
+  WassersteinBarycenter *barycenter_problem = (WassersteinBarycenter *)p;
+  int state = set_potential(barycenter_problem, x);
+  if (state == GSL_SUCCESS) {
+    get_jacobian_uniform_measure(barycenter_problem, df);
+    return GSL_SUCCESS;
+  } else {
+    return GSL_FAILURE;
+  }
+}
+
+int composite_fdf(const gsl_vector *x, void *p, gsl_vector *f, gsl_matrix *df) {
+  WassersteinBarycenter *barycenter_problem = (WassersteinBarycenter *)p;
+  int state = set_potential(barycenter_problem, x);
+  if (state == GSL_SUCCESS) {
+    get_gradient(barycenter_problem, f);
+    get_jacobian_uniform_measure(barycenter_problem, df);
+    return GSL_SUCCESS;
+  } else {
+    return GSL_FAILURE;
+  }
+}
+
+void WassersteinBarycenter::semi_discrete(int steps) {
 
   /* We only deal with uniform measure for now */
   if (valid_column_variables.size() == 0 || not is_uniform_measure) {
     return;
   }
-  update_lp = false;
 
   gsl_multiroot_function_fdf FDF;
-  FDF.fdf = &jacobian_uniform_measure;
+  FDF.f = &gradient_fn;
+  FDF.df = &jacobian_uniform_measure;
+  FDF.fdf = &composite_fdf;
   FDF.n = valid_column_variables.size();
   FDF.params = this;
   gsl_vector *x = gsl_vector_alloc(FDF.n);
@@ -97,7 +129,7 @@ void WassersteinBarycenter::semi_discrete(double tolerance, int step) {
     gsl_vector_set(x, i, potential[valid_column_variables[i]]);
   }
 
-  const gsl_multiroot_fdfsolver_type *T = gsl_multiroot_fdfsolver_newton;
+  const gsl_multiroot_fdfsolver_type *T = gsl_multiroot_fdfsolver_hybridsj;
   gsl_multiroot_fdfsolver *s = gsl_multiroot_fdfsolver_alloc(T, FDF.n);
   gsl_multiroot_fdfsolver_set(s, &FDF, x);
 
@@ -106,18 +138,35 @@ void WassersteinBarycenter::semi_discrete(double tolerance, int step) {
   do {
     iter++;
     status = gsl_multiroot_fdfsolver_iterate(s);
-    if (status) {
-      /* check if solver is stuck */
+    if (status == GSL_EBADFUNC) {
+      std::cout << "The iteration encountered a singular point where the "
+                   "function or its derivative evaluated to Inf or NaN"
+                << std::endl;
       break;
     }
-    status = gsl_multiroot_test_residual(s->f, tolerance);
-  } while (status == GSL_CONTINUE && iter < step);
+    if (status == GSL_ENOPROG) {
+      std::cout << "The iteration is not making any progress, preventing the "
+                   "algorithm from continuing."
+                << std::endl;
+      break;
+    }
 
+    status = gsl_multiroot_test_residual(s->f, tolerance);
+  } while (status == GSL_CONTINUE && iter < steps);
+
+  double average = 0;
   for (int i = 0; i < FDF.n; i++) {
-    potential[valid_column_variables[i]] = gsl_vector_get(s->x, i);
+    double a = gsl_vector_get(s->x, i);
+    potential[valid_column_variables[i]] = a;
+    average += a;
     gradient[valid_column_variables[i]] = gsl_vector_get(s->f, i);
   }
+  average /= FDF.n;
+
+  for (int i = 0; i < FDF.n; i++) {
+    potential[valid_column_variables[i]] -= average;
+  }
+
   gsl_multiroot_fdfsolver_free(s);
   gsl_vector_free(x);
-  update_lp = true;
 }

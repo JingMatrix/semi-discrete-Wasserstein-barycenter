@@ -42,8 +42,8 @@ void PowerDiagram::gnuplot() {
     }
     for (auto cell : cropped_cells) {
       auto poly = cell.second;
-      point << cell.first.point() << " "
-            << cell.first.weight() - min_radius + 0.01 << " "
+      double p = CGAL::to_double(cell.first.weight() - min_radius + 0.0001);
+      point << cell.first.point() << " " << std::sqrt(p) << " "
             << label[cell.first] << std::endl;
       for (auto eit = poly.edges_begin(); eit != poly.edges_end(); ++eit) {
         line << eit->source() << " " << eit->to_vector() << std::endl;

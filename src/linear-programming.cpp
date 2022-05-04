@@ -34,6 +34,7 @@ void WassersteinBarycenter::initialize_lp() {
     /* j convert iterate_list into an integer */
     for (int j = 1; j <= n_column_variables; j++) {
 
+      valid_column_variables.push_back(j);
       column_variables.push_back(iterate_list);
       /* x, y are for point coordinates */
       double x = 0;
