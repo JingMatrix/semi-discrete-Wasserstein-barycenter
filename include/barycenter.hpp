@@ -68,7 +68,7 @@ private:
 
   /* Numerical solution */
   /* Semi discrete optimal transport solver */
-  void semi_discrete(int step);
+  int semi_discrete(int step);
   void print_info();
 
 public:
@@ -90,9 +90,9 @@ public:
   std::vector<K::Point_2> support_points{K::Point_2(0, 0)};
   std::vector<double> potential;
   std::vector<double> gradient;
-  void update_potential();
+  void update_partition();
   double tolerance;
-  double sum_error = 0;
+  double error = std::numeric_limits<double>::max();
 
   ~WassersteinBarycenter() { glp_delete_prob(lp); }
 };

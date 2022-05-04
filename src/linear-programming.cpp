@@ -98,6 +98,6 @@ void WassersteinBarycenter::initialize_lp() {
   }
 
   glp_load_matrix(lp, n_entries, ia, ja, ar);
-  /* glp_term_out(GLP_OFF); */
+  glp_term_out(GLP_OFF);
   std::cout << "Finish initializing linear programming part." << std::endl;
 }

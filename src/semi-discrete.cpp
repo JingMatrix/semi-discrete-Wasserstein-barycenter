@@ -4,7 +4,8 @@
 #include <gsl/gsl_vector.h>
 
 void get_gradient(WassersteinBarycenter *barycenter_problem, gsl_vector *f) {
-  const std::vector<int> &variables = barycenter_problem->valid_column_variables;
+  const std::vector<int> &variables =
+      barycenter_problem->valid_column_variables;
   const int n_variables = variables.size();
   for (int i = 0; i < n_variables; i++) {
     gsl_vector_set(f, i, barycenter_problem->gradient[variables[i]]);
@@ -13,7 +14,8 @@ void get_gradient(WassersteinBarycenter *barycenter_problem, gsl_vector *f) {
 
 int set_potential(WassersteinBarycenter *barycenter_problem,
                   const gsl_vector *x) {
-  const std::vector<int> &variables = barycenter_problem->valid_column_variables;
+  const std::vector<int> &variables =
+      barycenter_problem->valid_column_variables;
   const int n_variables = variables.size();
   for (int i = 0; i < n_variables; i++) {
     double p = gsl_vector_get(x, i);
@@ -25,13 +27,14 @@ int set_potential(WassersteinBarycenter *barycenter_problem,
       return GSL_FAILURE;
     }
   }
-  barycenter_problem->update_potential();
+  barycenter_problem->update_partition();
   return GSL_SUCCESS;
 }
 
 void get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
                                   gsl_matrix *df) {
-  const std::vector<int> &variables = barycenter_problem->valid_column_variables;
+  const std::vector<int> &variables =
+      barycenter_problem->valid_column_variables;
   const int n_variables = variables.size();
   auto &borders = barycenter_problem->partition.borders;
   for (int i = 0; i < n_variables; i++) {
@@ -111,11 +114,11 @@ int composite_fdf(const gsl_vector *x, void *p, gsl_vector *f, gsl_matrix *df) {
   }
 }
 
-void WassersteinBarycenter::semi_discrete(int steps) {
+int WassersteinBarycenter::semi_discrete(int steps) {
 
   /* We only deal with uniform measure for now */
   if (valid_column_variables.size() == 0 || not is_uniform_measure) {
-    return;
+    return 0;
   }
 
   gsl_multiroot_function_fdf FDF;
@@ -134,13 +137,12 @@ void WassersteinBarycenter::semi_discrete(int steps) {
   gsl_multiroot_fdfsolver_set(s, &FDF, x);
 
   int status = 0;
-  int iter = 1;
+  int iter = 0;
   do {
-    iter++;
     status = gsl_multiroot_fdfsolver_iterate(s);
     if (status == GSL_EBADFUNC) {
       std::cout << "The iteration encountered a singular point where the "
-                   "function or its derivative evaluated to Inf or NaN"
+                   "function or its derivative evaluated to Inf or NaN."
                 << std::endl;
       break;
     }
@@ -152,14 +154,14 @@ void WassersteinBarycenter::semi_discrete(int steps) {
     }
 
     status = gsl_multiroot_test_residual(s->f, tolerance);
+    iter++;
   } while (status == GSL_CONTINUE && iter < steps);
 
   double average = 0;
+  error = 0;
   for (int i = 0; i < FDF.n; i++) {
-    double a = gsl_vector_get(s->x, i);
-    potential[valid_column_variables[i]] = a;
-    average += a;
-    gradient[valid_column_variables[i]] = gsl_vector_get(s->f, i);
+    average += potential[valid_column_variables[i]];
+    error += std::pow(gradient[valid_column_variables[i]], 2);
   }
   average /= FDF.n;
 
@@ -169,4 +171,6 @@ void WassersteinBarycenter::semi_discrete(int steps) {
 
   gsl_multiroot_fdfsolver_free(s);
   gsl_vector_free(x);
+
+  return iter;
 }

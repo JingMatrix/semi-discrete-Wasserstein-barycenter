@@ -24,7 +24,7 @@ double find_barycenter(int argc, char *argv[]) {
       K::Iso_rectangle_2{0, 0, 1, 1}, "data/marginals",
       WassersteinBarycenter::get_marginal_coefficients(argc, argv));
   default_problem.iteration_solver(10);
-  return default_problem.sum_error;
+  return default_problem.error;
 }
 
 int main(int argc, char *argv[]) {

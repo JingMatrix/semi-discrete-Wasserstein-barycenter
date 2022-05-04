@@ -1,6 +1,6 @@
 #include <barycenter.hpp>
 
-void WassersteinBarycenter::update_potential() {
+void WassersteinBarycenter::update_partition() {
   if (valid_column_variables.size() == 0) {
     std::cout << "Currently no valid column variables. Exit." << std::endl;
     std::exit(EXIT_SUCCESS);
@@ -15,6 +15,7 @@ void WassersteinBarycenter::update_potential() {
   if (potential.size() != n_column_variables + 1) {
     if (valid_column_variables.size() == n_column_variables) {
       potential = std::vector<double>(n_column_variables + 1);
+      std::cout << "Set initial potential to be 0s." << std::endl;
     } else {
       std::cout << "Potential has wrong size." << std::endl;
       std::exit(EXIT_FAILURE);
@@ -33,7 +34,6 @@ void WassersteinBarycenter::update_potential() {
   std::vector<PowerDiagram::vertex> vertices;
 
   partition_area = 0;
-  sum_error = 0;
   for (int j : valid_column_variables) {
     vertices.push_back(PowerDiagram::vertex{support_points[j], potential[j]});
   }
@@ -49,15 +49,9 @@ void WassersteinBarycenter::update_potential() {
     i++;
     /* The gradient here has different sign from the paper */
     gradient[j] = discrete_plan[j] - cell_area[v];
-    sum_error += std::abs(gradient[j]);
     partition_area += cell_area[v];
     partition.label.insert({v, std::to_string(j)});
   }
-
-  /* std::cout << std::endl */
-  /*           << "Update " << valid_column_variables.size() */
-  /*           << " potential components, get sum of gradient: " << sum_error */
-  /*           << "." << std::endl; */
 
   if (std::abs(partition_area - support_area) > 10e-6) {
     std::cerr << "Current support area is " << support_area
@@ -77,9 +71,9 @@ void WassersteinBarycenter::update_discrete_plan() {
 
   if (potential.size() != n_column_variables + 1) {
     std::cout << "Potential is not of correct size when calling "
-                 "update_discrete_plan(), reset them to all 0s."
+                 "update_discrete_plan()."
               << std::endl;
-    potential = std::vector<double>(n_column_variables + 1);
+    update_partition();
   }
 
   for (int j = 1; j <= n_column_variables; j++) {
@@ -117,7 +111,7 @@ void WassersteinBarycenter::print_info() {
   }
 
   if (gradient.size() != n_column_variables + 1) {
-    update_potential();
+    update_partition();
   }
 
   std::cout << std::endl
@@ -129,9 +123,9 @@ void WassersteinBarycenter::print_info() {
                 CGAL::to_double(support_points[j].y()));
   }
   if (valid_column_variables.size() != n_column_variables) {
-    std::cout
-        << "We remove the following points combinations in the discrete plan:"
-        << std::endl;
+    std::cout << "In the result above, we remove the following points "
+                 "combinations in the discrete plan:"
+              << std::endl;
     for (int j : dumped_column_variables) {
       std::cout << "(";
       for (auto n : column_variables[j]) {
@@ -152,17 +146,25 @@ void WassersteinBarycenter::print_info() {
 void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   tolerance = e;
   initialize_lp();
-  update_potential();
+  int n_iteration = 0;
   for (int i = 0; i < step; i++) {
-    semi_discrete(30);
-    print_info();
-    partition.gnuplot();
+    auto old_plan = discrete_plan;
     update_discrete_plan();
-    update_column_variables();
-    update_potential();
-    if (sum_error < tolerance) {
-      std::cout << "We reach the solution." << std::endl;
+    if (old_plan == discrete_plan) {
+      std::cout << std::endl;
+      if (error < tolerance) {
+        std::cout << "We reach the solution." << std::endl;
+      } else if (n_iteration == 0) {
+        std::cout << "Semi-discrete optimal transport solver is not working."
+                  << std::endl;
+      }
       break;
+    } else {
+      update_column_variables();
+      std::cout << std::endl;
+      n_iteration = semi_discrete(30);
+      print_info();
     }
   }
+  partition.gnuplot();
 }
