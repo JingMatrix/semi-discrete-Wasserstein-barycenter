@@ -31,7 +31,7 @@ int main() {
   std::cout << pd.number_of_hidden_vertices() << std::endl;
 
   // construct a rectangle
-  K::Iso_rectangle_2 bbox(0, 0, 1, 1);
+  K::Iso_rectangle_2 bbox(0, 0, 2, 2);
   rectangle_crop cropped_power_diagram(bbox);
   // extract the cropped Power diagram
   pd.draw_dual(cropped_power_diagram);

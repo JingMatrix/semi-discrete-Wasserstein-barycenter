@@ -17,7 +17,13 @@ if(USE_EXACT_KERNEL)
   add_definitions(-DUSE_EXACT_KERNEL)
 endif(USE_EXACT_KERNEL)
 
-find_package(CGAL REQUIRED QUIET OPTIONAL_COMPONENTS Core)
+find_package(
+  CGAL
+  REQUIRED QUIET
+  OPTIONAL_COMPONENTS
+  Qt5
+  Core
+)
 find_package(GSL REQUIRED)
 find_package(GLPK)
 include_directories(
@@ -39,7 +45,7 @@ add_library(
   src/linear-programming.cpp
 )
 
-# add_executable(draw-power-diagram src/qt-draw-example.cpp)
+add_executable(draw-power-diagram src/qt-draw-example.cpp)
 add_executable(test src/test.cpp)
 
 target_link_libraries(
@@ -52,11 +58,11 @@ target_link_libraries(
   ${GLPK_LIBRARIES}
   ${GSL_LIBRARIES}
 )
-# target_link_libraries(
-#   draw-power-diagram
-#   power-diagram
-#   CGAL::CGAL_Basic_viewer
-# )
+target_link_libraries(
+  draw-power-diagram
+  power-diagram
+  CGAL::CGAL_Basic_viewer
+)
 target_link_libraries(
   test
   barycenter
