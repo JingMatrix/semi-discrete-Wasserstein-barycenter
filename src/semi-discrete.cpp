@@ -45,8 +45,6 @@ int get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
       }
       K::Segment_2 s(barycenter_problem->support_points[variables[i]],
                      barycenter_problem->support_points[variables[j]]);
-      /* std::cout << "Current segment for " << variables[i] << " and " */
-      /*           << variables[j] << " is : " << s << "." << std::endl; */
       K::Segment_2 border{K::Point_2(0, 0), K::Point_2(0, 0)};
       double p = 0;
       bool has_border = true;
@@ -62,8 +60,6 @@ int get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
                 CGAL::to_double(border.squared_length() / s.squared_length())) /
             barycenter_problem->support_area;
       }
-      /* std::cout << "Set jacobian for variables (" << variables[i] << ", " */
-      /*           << variables[j] << ") as " << p << std::endl; */
       gsl_matrix_set(df, i, j, p);
       gsl_matrix_set(df, j, i, p);
     }
@@ -81,7 +77,7 @@ int get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
       gsl_matrix_set(df, i, i, -sum);
     } else {
       std::cout << "The column varible " << variables[i]
-                << " is pushed outside of current support, abort calclation."
+                << " is pushed outside of current support."
                 << std::endl;
 
       return GSL_FAILURE;
@@ -178,7 +174,6 @@ int WassersteinBarycenter::semi_discrete(int steps) {
        */
       /*              "function or its derivative evaluated to Inf or NaN." */
       /*           << std::endl; */
-      /* dump_semi_discrete_solver(); */
       if (partition.number_of_hidden_vertices() == 0) {
         std::cout << std::endl
                   << "Encounter sigularity for unknown reason in the " << iter
