@@ -66,9 +66,12 @@ void WassersteinBarycenter::update_partition() {
 }
 
 void WassersteinBarycenter::dump_debug() {
+  std::cout << std::endl << "Start to dump debug information." << std::endl;
+  std::cout << "Vertices to insert are written to file data/weight_points."
+            << std::endl;
   std::ofstream point("data/weight_points");
   for (auto v : vertices) {
-    point << v << std::endl;
+    point << v << " " << cell_area[v] << std::endl;
   }
   print_info();
   bool has_vertice_inside_support = partition.gnuplot();
@@ -81,11 +84,6 @@ void WassersteinBarycenter::dump_debug() {
       std::cout << "But there are " << n_vertices_no_cell
                 << " vertices has no cells in current support." << std::endl;
     } else {
-      std::cout << "Vertices are:" << std::endl;
-      for (auto data : cell_area) {
-        std::cout << data.first << " with cell area " << data.second << "."
-                  << std::endl;
-      }
       std::cout << "Borders are:" << std::endl;
       for (auto p : partition.borders) {
         std::cerr << p.first << "\t--+--\t" << p.second << std::endl;
@@ -96,12 +94,13 @@ void WassersteinBarycenter::dump_debug() {
     std::cout << "Current power diagram has no vertices in the support"
               << std::endl;
   }
+  std::cout << std::endl << "End dumping debug information." << std::endl;
   std::exit(EXIT_FAILURE);
 }
 
 void WassersteinBarycenter::update_discrete_plan() {
   if (discrete_plan.size() != n_column_variables + 1) {
-    std::cout << "Linear programming part is not initilized before calling "
+    std::cout << "Linear programming part is not initialized before calling "
                  "update_discrete_plan()."
               << std::endl;
     initialize_lp();
@@ -154,7 +153,7 @@ void WassersteinBarycenter::print_info() {
   }
 
   if (support_points.size() != n_column_variables + 1) {
-    std::cerr << "Error in getiing support points info." << std::endl;
+    std::cerr << "Error in getting support points info." << std::endl;
     std::exit(EXIT_FAILURE);
   }
 
@@ -250,7 +249,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   } else {
     if (not encounter_loop) {
       std::cout
-          << "Should increase the iteration steps to analyse a possible loop."
+          << "Should increase the iteration steps to analyze a possible loop."
           << std::endl;
     } else {
       int n = plans.size();

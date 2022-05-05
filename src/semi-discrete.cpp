@@ -32,8 +32,8 @@ int set_potential(WassersteinBarycenter *barycenter_problem,
   return GSL_SUCCESS;
 }
 
-void get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
-                                  gsl_matrix *df) {
+int get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
+                                 gsl_matrix *df) {
   const std::vector<int> &variables =
       barycenter_problem->valid_column_variables;
   const int n_variables = variables.size();
@@ -83,21 +83,28 @@ void get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
       std::cout << "The column varible " << variables[i]
                 << " is pushed outside of current support, abort calclation."
                 << std::endl;
-      barycenter_problem->dump_debug();
+
+      return GSL_FAILURE;
     }
   }
+  return GSL_SUCCESS;
 }
 
-void get_jacobian_uniform_measure_lower_dimension(
+int get_jacobian_uniform_measure_lower_dimension(
     WassersteinBarycenter *barycenter_problem, gsl_matrix *J) {
 
   const int n = barycenter_problem->valid_column_variables.size();
   gsl_matrix *jacobian = gsl_matrix_alloc(n, n);
-  get_jacobian_uniform_measure(barycenter_problem, jacobian);
-  for (int i = 0; i < n - 1; i++) {
-    for (int j = 0; j < n - 1; j++) {
-      gsl_matrix_set(J, i, j, gsl_matrix_get(jacobian, i, j));
+  int state = get_jacobian_uniform_measure(barycenter_problem, jacobian);
+  if (state == GSL_SUCCESS) {
+    for (int i = 0; i < n - 1; i++) {
+      for (int j = 0; j < n - 1; j++) {
+        gsl_matrix_set(J, i, j, gsl_matrix_get(jacobian, i, j));
+      }
     }
+    return GSL_SUCCESS;
+  } else {
+    return state;
   }
 }
 
@@ -116,8 +123,9 @@ int jacobian_uniform_measure(const gsl_vector *x, void *p, gsl_matrix *df) {
   WassersteinBarycenter *barycenter_problem = (WassersteinBarycenter *)p;
   int state = set_potential(barycenter_problem, x);
   if (state == GSL_SUCCESS) {
-    get_jacobian_uniform_measure_lower_dimension(barycenter_problem, df);
-    return GSL_SUCCESS;
+    state =
+        get_jacobian_uniform_measure_lower_dimension(barycenter_problem, df);
+    return state;
   } else {
     return GSL_FAILURE;
   }
@@ -128,8 +136,9 @@ int composite_fdf(const gsl_vector *x, void *p, gsl_vector *f, gsl_matrix *df) {
   int state = set_potential(barycenter_problem, x);
   if (state == GSL_SUCCESS) {
     get_gradient(barycenter_problem, f);
-    get_jacobian_uniform_measure_lower_dimension(barycenter_problem, df);
-    return GSL_SUCCESS;
+    state =
+        get_jacobian_uniform_measure_lower_dimension(barycenter_problem, df);
+    return state;
   } else {
     return GSL_FAILURE;
   }
@@ -156,7 +165,7 @@ int WassersteinBarycenter::semi_discrete(int steps) {
     /* gsl_vector_set_all(x, 0); */
   }
 
-  const gsl_multiroot_fdfsolver_type *T = gsl_multiroot_fdfsolver_hybridsj;
+  const gsl_multiroot_fdfsolver_type *T = gsl_multiroot_fdfsolver_newton;
   semi_discrete_solver = gsl_multiroot_fdfsolver_alloc(T, FDF.n);
   gsl_multiroot_fdfsolver_set(semi_discrete_solver, &FDF, x);
 
