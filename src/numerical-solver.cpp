@@ -243,7 +243,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       dump_semi_discrete_solver();
     } else {
       std::cout << "Finish the program after required " << step
-                << " iterations, the barycenter is not be found yet."
+                << " iterations, the barycenter is not found yet."
                 << std::endl;
     }
   } else {

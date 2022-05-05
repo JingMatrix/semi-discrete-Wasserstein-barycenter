@@ -24,8 +24,9 @@ void WassersteinBarycenter::initialize_lp() {
   }
 
   n_entries = n_column_variables * n_marginals;
-  int ia[1 + n_entries], ja[1 + n_entries];
-  double ar[1 + n_entries];
+  int *ia = new int[1 + n_entries];
+  int *ja = new int[1 + n_entries];
+  double *ar = new double[1 + n_entries];
   discrete_plan = {0};
   support_points = {K::Point_2(0, 0)};
   {
@@ -98,6 +99,9 @@ void WassersteinBarycenter::initialize_lp() {
   }
 
   glp_load_matrix(lp, n_entries, ia, ja, ar);
+  delete[] ia;
+  delete[] ja;
+  delete[] ar;
   glp_term_out(GLP_OFF);
   std::cout << "Finish initializing linear programming part." << std::endl;
 }
