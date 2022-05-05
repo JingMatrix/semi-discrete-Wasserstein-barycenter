@@ -180,16 +180,15 @@ int WassersteinBarycenter::semi_discrete(int steps) {
         std::cout << "Current partition has " << partition.number_of_vertices()
                   << " vertices and " << partition.borders.size() << " borders."
                   << std::endl;
-        auto area_data = partition.area();
         int n_vertices_no_cell =
-            partition.number_of_vertices() - area_data.size();
+            partition.number_of_vertices() - cell_area.size();
         if (n_vertices_no_cell > 0) {
           std::cout << "But there are " << n_vertices_no_cell
                     << " vertices has no cells in current support."
                     << std::endl;
         } else {
           std::cout << "Vertices are:" << std::endl;
-          for (auto data : area_data) {
+          for (auto data : cell_area) {
             std::cout << data.first << " with cell area " << data.second << "."
                       << std::endl;
           }

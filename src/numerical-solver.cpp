@@ -31,9 +31,9 @@ void WassersteinBarycenter::update_partition() {
     }
   }
 
-  std::vector<PowerDiagram::vertex> vertices;
+  vertices.clear();
 
-  partition_area = 0;
+  double partition_area = 0;
   for (int j : valid_column_variables) {
     vertices.push_back(PowerDiagram::vertex{support_points[j], potential[j]});
   }
@@ -47,20 +47,14 @@ void WassersteinBarycenter::update_partition() {
                 << std::endl;
     }
   }
-  partition.use_lable = true;
-  partition.label.clear();
 
   int i = 0;
-  /* std::cout << std::endl; */
   for (int j : valid_column_variables) {
     auto v = vertices[i];
-    /* std::cerr << v << " inserted and has area " << cell_area[v] << "." */
-    /*           << std::endl; */
     i++;
-    /* The gradient here has different sign from the paper */
-    gradient[j] = discrete_plan[j] - cell_area[v];
-    partition_area += cell_area[v];
-    partition.label.insert({v, std::to_string(j)});
+    double a = cell_area[v];
+    gradient[j] = discrete_plan[j] - a;
+    partition_area += a;
   }
 
   if (std::abs(partition_area - support_area) > 10e-6) {
@@ -86,8 +80,18 @@ void WassersteinBarycenter::update_discrete_plan() {
     update_partition();
   }
 
-  for (int j = 1; j <= n_column_variables; j++) {
-    glp_set_obj_coef(lp, j, potential[j]);
+  if (valid_column_variables.size() == vertices.size()) {
+    int i = 0;
+    for (int j : valid_column_variables) {
+      auto v = vertices[i];
+      i++;
+      double a = cell_area[v];
+      double squared_norm =
+          std::pow(v.point().x(), 2) + std::pow(v.point().y(), 2);
+      glp_set_obj_coef(lp, j,
+                       potential[j] * marginal_coefficients.front() -
+                           a * squared_norm);
+    }
   }
 
   glp_simplex(lp, NULL);
@@ -124,9 +128,16 @@ void WassersteinBarycenter::print_info() {
     update_partition();
   }
 
+  partition.use_lable = true;
+  partition.label.clear();
+
   std::cout << std::endl
             << "Probability\tPotential\tGradient\t     Point" << std::endl;
+  int i = 0;
   for (int j : valid_column_variables) {
+    auto v = vertices[i];
+    i++;
+    partition.label.insert({v, std::to_string(j)});
     std::printf(" %.4f \t%.4f\t\t%.4f\t\t(%.4f, %.4f)\n", discrete_plan[j],
                 potential[j], gradient[j],
                 CGAL::to_double(support_points[j].x()),
@@ -171,7 +182,11 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
     update_discrete_plan();
     update_column_variables();
     if (plans.contains(valid_column_variables)) {
-      if (start_loop) {
+      if (plans.size() == 1) {
+        start_loop = true;
+        encounter_loop = true;
+        break;
+      } else if (start_loop) {
         encounter_loop = true;
         break;
       } else {
@@ -208,8 +223,8 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       if (n == 1) {
         std::cout << "We reach the solution." << std::endl;
       } else {
-        std::cout << "Start to deal with a solution loop with length " << n
-                  << "." << std::endl;
+        std::cout << "Get a solution loop with length " << n << "."
+                  << std::endl;
       }
     }
   }

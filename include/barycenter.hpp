@@ -13,7 +13,8 @@ private:
   enum shape { Polygon, Rectangle };
   std::vector<discrete_dist> marginals;
   int n_marginals;
-  double partition_area = 0;
+  PowerDiagram::vertex_with_data cell_area;
+  std::vector<PowerDiagram::vertex> vertices;
   void read_marginals_data(const char *filename, std::list<double> coefs);
   std::list<double> marginal_coefficients;
   void set_marginal_coefficients(std::list<double> coefs) {
