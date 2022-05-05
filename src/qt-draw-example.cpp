@@ -31,7 +31,7 @@ int main() {
   std::cout << pd.number_of_hidden_vertices() << std::endl;
 
   // construct a rectangle
-  K::Iso_rectangle_2 bbox(0, 0, 2, 2);
+  K::Iso_rectangle_2 bbox(-10, -10, 10, 10);
   rectangle_crop cropped_power_diagram(bbox);
   // extract the cropped Power diagram
   pd.draw_dual(cropped_power_diagram);
@@ -39,7 +39,12 @@ int main() {
     cropped_power_diagram.edges.push_back(
         K::Segment_2(bbox.vertex(i), bbox.vertex(i + 1)));
   }
-  draw_segments<std::list<K::Segment_2>>(cropped_power_diagram.edges);
+  auto data = cropped_power_diagram.edges;
+  data.push_back(K::Segment_2(K::Point_2(0, 0), K::Point_2(1, 0)));
+  data.push_back(K::Segment_2(K::Point_2(1, 0), K::Point_2(1, 1)));
+  data.push_back(K::Segment_2(K::Point_2(1, 1), K::Point_2(0, 1)));
+  data.push_back(K::Segment_2(K::Point_2(0, 1), K::Point_2(0, 0)));
+  draw_segments<std::list<K::Segment_2>>(data);
 
   return 0;
 }

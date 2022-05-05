@@ -22,7 +22,7 @@ void PowerDiagram::plot_mma() {
   }
 }
 
-void PowerDiagram::gnuplot() {
+bool PowerDiagram::gnuplot() {
   if (not is_cropped) {
     std::cerr << "Power diagram not cropped, please use crop method fisrt."
               << std::endl;
@@ -31,8 +31,8 @@ void PowerDiagram::gnuplot() {
     std::ofstream point("data/pd_points");
     std::list<polygon> polygon_to_draw{};
     if (cropped_cells.size() == 0) {
-      std::cout << "No cells found." << std::endl;
-      std::exit(EXIT_FAILURE);
+      std::cout << "No cells found. Fail to plot." << std::endl;
+      return false;
     }
     double min_radius = CGAL::to_double(cropped_cells.begin()->first.weight());
     for (auto cell : cropped_cells) {
@@ -65,4 +65,5 @@ void PowerDiagram::gnuplot() {
               << std::endl;
     system("gnuplot -p data/gnu_plot");
   }
+  return true;
 }

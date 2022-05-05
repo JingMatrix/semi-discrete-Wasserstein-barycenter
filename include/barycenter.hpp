@@ -99,6 +99,8 @@ public:
   double tolerance;
   double error = std::numeric_limits<double>::max();
 
+  void dump_debug();
+
   ~WassersteinBarycenter() {
     glp_delete_prob(lp);
     gsl_multiroot_fdfsolver_free(semi_discrete_solver);

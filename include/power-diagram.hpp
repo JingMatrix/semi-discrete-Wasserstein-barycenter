@@ -119,7 +119,7 @@ public:
   void plot_mma();
   bool use_lable = false;
   vertex_with_label label;
-  void gnuplot();
+  bool gnuplot();
 
   /* Access some info from the regular triangulation. */
   bool is_valid() { return dual_rt.is_valid(); }

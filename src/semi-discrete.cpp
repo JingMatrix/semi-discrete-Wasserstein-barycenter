@@ -83,7 +83,7 @@ void get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
       std::cout << "The column varible " << variables[i]
                 << " is pushed outside of current support, abort calclation."
                 << std::endl;
-      std::exit(EXIT_FAILURE);
+      barycenter_problem->dump_debug();
     }
   }
 }
@@ -176,29 +176,7 @@ int WassersteinBarycenter::semi_discrete(int steps) {
                   << " iteration, dump data for "
                      "analysis."
                   << std::endl;
-        partition.gnuplot();
-        std::cout << "Current partition has " << partition.number_of_vertices()
-                  << " vertices and " << partition.borders.size() << " borders."
-                  << std::endl;
-        int n_vertices_no_cell =
-            partition.number_of_vertices() - cell_area.size();
-        if (n_vertices_no_cell > 0) {
-          std::cout << "But there are " << n_vertices_no_cell
-                    << " vertices has no cells in current support."
-                    << std::endl;
-        } else {
-          std::cout << "Vertices are:" << std::endl;
-          for (auto data : cell_area) {
-            std::cout << data.first << " with cell area " << data.second << "."
-                      << std::endl;
-          }
-          std::cout << "Borders are:" << std::endl;
-          for (auto p : partition.borders) {
-            std::cerr << p.first << "\t--+--\t" << p.second << std::endl;
-          }
-          dump_semi_discrete_solver();
-        }
-        std::exit(EXIT_FAILURE);
+        dump_debug();
       }
       break;
     }

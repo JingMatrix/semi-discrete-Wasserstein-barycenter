@@ -61,8 +61,42 @@ void WassersteinBarycenter::update_partition() {
     std::cerr << "Current support area is " << support_area
               << ", but partition area is " << partition_area << "."
               << std::endl;
-    partition.gnuplot();
+    dump_debug();
   }
+}
+
+void WassersteinBarycenter::dump_debug() {
+  std::ofstream point("data/weight_points");
+  for (auto v : vertices) {
+    point << v << std::endl;
+  }
+  print_info();
+  bool has_vertice_inside_support = partition.gnuplot();
+  if (has_vertice_inside_support) {
+    std::cout << "Current partition has " << partition.number_of_vertices()
+              << " vertices and " << partition.borders.size() << " borders."
+              << std::endl;
+    int n_vertices_no_cell = partition.number_of_vertices() - cell_area.size();
+    if (n_vertices_no_cell > 0) {
+      std::cout << "But there are " << n_vertices_no_cell
+                << " vertices has no cells in current support." << std::endl;
+    } else {
+      std::cout << "Vertices are:" << std::endl;
+      for (auto data : cell_area) {
+        std::cout << data.first << " with cell area " << data.second << "."
+                  << std::endl;
+      }
+      std::cout << "Borders are:" << std::endl;
+      for (auto p : partition.borders) {
+        std::cerr << p.first << "\t--+--\t" << p.second << std::endl;
+      }
+      dump_semi_discrete_solver();
+    }
+  } else {
+    std::cout << "Current power diagram has no vertices in the support"
+              << std::endl;
+  }
+  std::exit(EXIT_FAILURE);
 }
 
 void WassersteinBarycenter::update_discrete_plan() {
