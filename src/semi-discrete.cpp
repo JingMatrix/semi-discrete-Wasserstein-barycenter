@@ -165,7 +165,7 @@ int WassersteinBarycenter::semi_discrete(int steps) {
     /* gsl_vector_set_all(x, 0); */
   }
 
-  const gsl_multiroot_fdfsolver_type *T = gsl_multiroot_fdfsolver_newton;
+  const gsl_multiroot_fdfsolver_type *T = gsl_multiroot_fdfsolver_hybridsj;
   semi_discrete_solver = gsl_multiroot_fdfsolver_alloc(T, FDF.n);
   gsl_multiroot_fdfsolver_set(semi_discrete_solver, &FDF, x);
 

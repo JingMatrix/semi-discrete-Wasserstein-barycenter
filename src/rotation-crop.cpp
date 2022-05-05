@@ -141,8 +141,13 @@ void PowerDiagram::crop_algorithm() {
       }
     };
     std::set<vertex, compX> vertices;
+    double r = dual_rt.finite_vertices_begin()->point().weight();
     for (auto v : dual_rt.finite_vertex_handles()) {
       vertices.insert(v->point());
+      double w = v->point().weight();
+      if (w < r) {
+        r = w;
+      }
     }
     /* std::cout << "Dimension 1 with " << vertices.size() << " vertices" */
     /*           << std::endl; */
@@ -150,10 +155,10 @@ void PowerDiagram::crop_algorithm() {
     FACE_CASE d1 = CURRENT_INFINITE_NEXT_INFINITE;
     for (auto v = vertices.begin(); v != vertices.end(); ++v) {
       chain c = {};
-      auto c1 = K::Circle_2(v->point(), v->weight());
+      auto c1 = K::Circle_2(v->point(), v->weight() - r + 1);
       ++v;
       if (v != vertices.end()) {
-        auto c2 = K::Circle_2(v->point(), v->weight());
+        auto c2 = K::Circle_2(v->point(), v->weight() - r + 1);
         lines.push_back(CGAL::radical_line(c1, c2));
       }
       auto support_hits = IntersectionHistory(cropped_shape, &d1);

@@ -230,7 +230,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
     std::cout << std::endl;
     potential = std::vector<double>(n_column_variables + 1);
     n_iteration = semi_discrete(30);
-    print_info();
+    /* print_info(); */
     if (error < tolerance) {
       plans.insert({valid_column_variables, {potential, error}});
     }
@@ -261,5 +261,6 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       }
     }
   }
+  print_info();
   partition.gnuplot();
 }
