@@ -86,14 +86,7 @@ void WassersteinBarycenter::update_discrete_plan() {
     update_partition();
   }
 
-  /* double average = 0; */
-  /* for (int j = 1; j <= n_column_variables; j++) { */
-  /*   average += potential[j]; */
-  /* } */
-  /* average /= n_column_variables; */
-
   for (int j = 1; j <= n_column_variables; j++) {
-    /* potential[j] -= average; */
     glp_set_obj_coef(lp, j, potential[j]);
   }
 
@@ -150,7 +143,6 @@ void WassersteinBarycenter::print_info() {
           std::cout << n << ", ";
         }
         std::cout << "\b\b), ";
-        potential[j] = 0;
       }
       std::cout << "\b\b. ";
     }
@@ -163,38 +155,63 @@ void WassersteinBarycenter::print_info() {
   }
 }
 
+struct solution {
+  std::vector<int> column_variables;
+  std::vector<double> potential;
+};
+
 void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   tolerance = e;
   initialize_lp();
   int n_iteration = 0;
-  int i = 0;
-  /* std::list<std::vector<double>> plans; */
-  for (; i < step; i++) {
-    auto old_plan = discrete_plan;
+  std::map<std::vector<int>, std::pair<std::vector<double>, double>> plans{};
+  bool start_loop = false;
+  bool encounter_loop = false;
+  for (int i = 0; i < step; i++) {
     update_discrete_plan();
-    if (old_plan == discrete_plan) {
-      std::cout << std::endl;
-      if (error < tolerance) {
-        std::cout << "We reach the solution." << std::endl;
-      } else if (n_iteration == 0) {
-        std::cout << "Semi-discrete optimal transport solver is not working."
-                  << std::endl;
-        dump_semi_discrete_solver();
+    update_column_variables();
+    if (plans.contains(valid_column_variables)) {
+      if (start_loop) {
+        encounter_loop = true;
+        break;
+      } else {
+        start_loop = true;
+        plans.clear();
       }
-      break;
+    }
+    std::cout << std::endl;
+    potential = std::vector<double>(n_column_variables + 1);
+    n_iteration = semi_discrete(30);
+    print_info();
+    if (error < tolerance) {
+      plans.insert({valid_column_variables, {potential, error}});
+    }
+  }
+  std::cout << std::endl;
+  if (not start_loop) {
+    if (n_iteration == 0) {
+      std::cout << "Semi-discrete optimal transport solver is not working."
+                << std::endl;
+      dump_semi_discrete_solver();
     } else {
-      update_column_variables();
-      potential = std::vector<double>(n_column_variables + 1);
-      std::cout << std::endl;
-      n_iteration = semi_discrete(30);
-      print_info();
+      std::cout << "Finish the program after required " << step
+                << " iterations, the barycenter is not be found yet."
+                << std::endl;
+    }
+  } else {
+    if (not encounter_loop) {
+      std::cout
+          << "Should increase the iteration steps to analyse a possible loop."
+          << std::endl;
+    } else {
+      int n = plans.size();
+      if (n == 1) {
+        std::cout << "We reach the solution." << std::endl;
+      } else {
+        std::cout << "Start to deal with a solution loop with length " << n
+                  << "." << std::endl;
+      }
     }
   }
   partition.gnuplot();
-  if (i == step) {
-    std::cout << std::endl
-              << "Finish the program after required " << step
-              << " iterations, the barycenter may not be found yet."
-              << std::endl;
-  }
 }

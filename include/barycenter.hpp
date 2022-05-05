@@ -9,6 +9,7 @@ public:
   typedef std::vector<std::pair<K::Point_2, double>> discrete_dist;
 
 private:
+  /* Marginal distributions */
   enum shape { Polygon, Rectangle };
   std::vector<discrete_dist> marginals;
   int n_marginals;

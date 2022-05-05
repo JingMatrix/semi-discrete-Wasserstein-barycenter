@@ -77,7 +77,14 @@ void get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
       }
       sum += gsl_matrix_get(df, i, j);
     }
-    gsl_matrix_set(df, i, i, -sum);
+    if (sum != 0) {
+      gsl_matrix_set(df, i, i, -sum);
+    } else {
+      std::cout << "The column varible " << variables[i]
+                << " is pushed outside of current support, abort calclation."
+                << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
   }
 }
 
@@ -158,27 +165,39 @@ int WassersteinBarycenter::semi_discrete(int steps) {
   do {
     status = gsl_multiroot_fdfsolver_iterate(semi_discrete_solver);
     if (status == GSL_EBADFUNC) {
-      /* std::cout << "The iteration encountered a singular point where the " */
+      /* std::cout << "The iteration encountered a singular point where the "
+       */
       /*              "function or its derivative evaluated to Inf or NaN." */
       /*           << std::endl; */
       /* dump_semi_discrete_solver(); */
       if (partition.number_of_hidden_vertices() == 0) {
-        std::cout << "Encounter sigularity for unknown reason, dump data for "
+        std::cout << std::endl
+                  << "Encounter sigularity for unknown reason in the " << iter
+                  << " iteration, dump data for "
                      "analysis."
                   << std::endl;
-        dump_semi_discrete_solver();
         partition.gnuplot();
-        print_info();
         std::cout << "Current partition has " << partition.number_of_vertices()
                   << " vertices and " << partition.borders.size() << " borders."
                   << std::endl;
-        std::cout << "Vertices are:" << std::endl;
-        for (auto data : partition.area()) {
-          std::cerr << data.first << std::endl;
-        }
-        std::cout << "Borders are:" << std::endl;
-        for (auto p : partition.borders) {
-          std::cerr << p.first << "\t--+--\t" << p.second << std::endl;
+        auto area_data = partition.area();
+        int n_vertices_no_cell =
+            partition.number_of_vertices() - area_data.size();
+        if (n_vertices_no_cell > 0) {
+          std::cout << "But there are " << n_vertices_no_cell
+                    << " vertices has no cells in current support."
+                    << std::endl;
+        } else {
+          std::cout << "Vertices are:" << std::endl;
+          for (auto data : area_data) {
+            std::cout << data.first << " with cell area " << data.second << "."
+                      << std::endl;
+          }
+          std::cout << "Borders are:" << std::endl;
+          for (auto p : partition.borders) {
+            std::cerr << p.first << "\t--+--\t" << p.second << std::endl;
+          }
+          dump_semi_discrete_solver();
         }
         std::exit(EXIT_FAILURE);
       }
