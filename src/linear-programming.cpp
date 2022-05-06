@@ -27,8 +27,10 @@ void WassersteinBarycenter::initialize_lp() {
   int *ia = new int[1 + n_entries];
   int *ja = new int[1 + n_entries];
   double *ar = new double[1 + n_entries];
-  discrete_plan = {0};
+  /* discrete_plan = {0}; */
   support_points = {K::Point_2(0, 0)};
+  squared_norm = {0};
+  column_variables = {{0}};
   {
     /* The iteration list should be bounded by dims. */
     std::vector<int> iterate_list(n_marginals, 1);
@@ -46,7 +48,7 @@ void WassersteinBarycenter::initialize_lp() {
 
       /* We start with a Voronoi diagram, and uniform distribution
        * as the initial solution. */
-      double proba = 1;
+      /* double proba = 1; */
       /* Use (m, n) as coordinate in marginals, i.e., */
       /* the n th element in the m th marginal. */
       for (int m = 1; m <= n_marginals; m++) {
@@ -71,13 +73,14 @@ void WassersteinBarycenter::initialize_lp() {
         coef_it++;
         x += CGAL::to_double((*coef_it) * marginals[m - 1][n - 1].first.x());
         y += CGAL::to_double((*coef_it) * marginals[m - 1][n - 1].first.y());
-        proba *= marginals[m - 1][n - 1].second;
+        /* proba *= marginals[m - 1][n - 1].second; */
       }
       x /= (1 - marginal_coefficients.front());
       y /= (1 - marginal_coefficients.front());
       /* std::cout << "Insert point " << x << ", " << y << std::endl; */
-      discrete_plan.push_back(proba);
+      /* discrete_plan.push_back(proba); */
       support_points.push_back(K::Point_2(x, y));
+      squared_norm.push_back(std::pow(x, 2) + std::pow(y, 2));
       /* We order solution in the reverse dict order. */
       /* It doesn't matter how we order it at all since we deal the constraint
        * matrix at the same time. */
@@ -92,9 +95,20 @@ void WassersteinBarycenter::initialize_lp() {
     }
 
     if (support_points.size() != n_column_variables + 1 ||
-        column_variables.size() != n_column_variables + 1) {
-      std::cerr << "Potential initialization failed." << std::endl;
+        column_variables.size() != n_column_variables + 1 ||
+        valid_column_variables.size() != n_column_variables) {
+      std::cerr << "Potential initialization failed with "
+                << support_points.size() - 1 << " support points found, "
+                << column_variables.size() - 1
+                << " column variables indexed and "
+                << valid_column_variables.size()
+                << " variable are set to be valid, while we have "
+                << n_column_variables << " column varibles in total. "
+                << std::endl;
       std::exit(EXIT_FAILURE);
+    } else {
+      std::cout << "Initialized the linear programming problem with "
+                << n_column_variables << " column variales." << std::endl;
     }
   }
 

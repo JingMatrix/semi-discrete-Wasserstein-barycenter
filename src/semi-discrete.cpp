@@ -79,11 +79,17 @@ int get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
       std::cout << "The column varible " << variables[i]
                 << " is pushed outside of current support." << std::endl;
       has_vertex_out_of_support = true;
+      if (i == n_variables - 1) {
+        std::cout << "This column variable is not free." << std::endl;
+      } else {
+        barycenter_problem->index_out_of_support.push_back(i);
+      }
     }
   }
   if (has_vertex_out_of_support) {
     return GSL_FAILURE;
   } else {
+    barycenter_problem->index_out_of_support.clear();
     return GSL_SUCCESS;
   }
 }
@@ -176,14 +182,30 @@ int WassersteinBarycenter::semi_discrete(int steps) {
        */
       /*              "function or its derivative evaluated to Inf or NaN." */
       /*           << std::endl; */
-      if (partition.number_of_hidden_vertices() == 0) {
-        std::cout << "Encounter sigularity for unknown reason in the " << iter
-                  << " iteration, dump data for "
-                     "analysis."
-                  << std::endl;
+      if (index_out_of_support.size() > 0) {
+        std::cout << "Current step data that cause the problem:" << std::endl;
+        for (int i : index_out_of_support) {
+          double step = gsl_vector_get(semi_discrete_solver->dx, i);
+          std::cout << valid_column_variables[i] << "\t->\t" << step
+                    << std::endl;
+          if (step < 0) {
+            gsl_vector_set(semi_discrete_solver->dx, i, 0);
+          } else {
+            gsl_vector_set(semi_discrete_solver->dx, i, 2 * step);
+          }
+        }
+        std::cout << "We fix then manually to the following:" << std::endl;
+        for (int i : index_out_of_support) {
+          double step = gsl_vector_get(semi_discrete_solver->dx, i);
+          std::cout << valid_column_variables[i] << "\t->\t" << step
+                    << std::endl;
+        }
+      } else {
+        std::cout << "Encounter sigularity not handled in the " << iter
+                  << " iteration, dump data for analysis." << std::endl;
         dump_debug();
+        break;
       }
-      break;
     }
     if (status == GSL_ENOPROG) {
       std::cout << "The iteration is not making any progress, preventing the "
@@ -219,13 +241,24 @@ void WassersteinBarycenter::dump_semi_discrete_solver() {
   /* gsl_matrix *df = semi_discrete_solver->df; */
   const int n = valid_column_variables.size();
   gsl_matrix *jacobian = gsl_matrix_alloc(n, n);
+  std::ofstream file("data/jacobian");
   get_jacobian_uniform_measure(this, jacobian);
-  std::cout << "Current jacobian is:" << std::endl;
+  std::cout << "Matrix data is written to file data/jacobian." << std::endl;
+  if (n < 10) {
+    std::cout << "Current jacobian is:" << std::endl;
+  }
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < n; j++) {
-      std::printf("%.3f\t", gsl_matrix_get(jacobian, i, j));
+      if (n < 10) {
+        std::printf("%.3f\t", gsl_matrix_get(jacobian, i, j));
+      }
+      file << gsl_matrix_get(jacobian, i, j) << ", ";
     }
-    std::cout << std::endl;
+    if (n < 10) {
+      std::cout << std::endl;
+    }
+    file << ";" << std::endl;
   }
+
   gsl_matrix_free(jacobian);
 }

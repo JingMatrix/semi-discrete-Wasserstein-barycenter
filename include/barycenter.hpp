@@ -60,13 +60,16 @@ private:
   void initialize_lp();
   int n_row_variables = 0;
   int n_column_variables = 1;
+  /* for objective function */
+  std::vector<double> squared_norm{0};
   /* no zero entries in the constrain matrix */
   int n_entries;
   std::vector<int> dims;
-  std::unordered_set<int> dumped_column_variables;
+  std::unordered_set<int> dumb_column_variables;
   /* default discrete plan is the independent plan */
   std::vector<double> discrete_plan = {0};
   void update_discrete_plan();
+  bool lp_solve_called = false;
   void update_column_variables();
 
   /* Numerical solution */
@@ -95,11 +98,12 @@ public:
   std::vector<K::Point_2> support_points{K::Point_2(0, 0)};
   std::vector<double> potential;
   std::vector<double> gradient;
+  std::vector<int> index_out_of_support;
   void update_partition();
   double tolerance;
   double error = std::numeric_limits<double>::max();
 
-  void dump_debug(bool exit_after_dump_debug=true);
+  void dump_debug(bool exit_after_dump_debug = true);
 
   ~WassersteinBarycenter() {
     glp_delete_prob(lp);

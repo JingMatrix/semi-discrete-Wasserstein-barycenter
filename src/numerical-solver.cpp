@@ -7,9 +7,9 @@ void WassersteinBarycenter::update_partition() {
   }
 
   if (discrete_plan.size() != n_column_variables + 1) {
-    std::cout << "Discrete plan has wrong size, call initialize_lp() now."
+    std::cout << "Discrete plan has wrong size when updating partition."
               << std::endl;
-    initialize_lp();
+    std::exit(EXIT_SUCCESS);
   }
 
   if (potential.size() != n_column_variables + 1) {
@@ -23,12 +23,10 @@ void WassersteinBarycenter::update_partition() {
   }
 
   if (gradient.size() != n_column_variables + 1) {
-    if (valid_column_variables.size() == n_column_variables) {
-      gradient = std::vector<double>(n_column_variables + 1);
-    } else {
-      std::cout << "Gradient has wrong size." << std::endl;
-      std::exit(EXIT_FAILURE);
-    }
+    std::cout << "Gradient has wrong size " << gradient.size() - 1
+              << ", while we have " << n_column_variables << " column varibles."
+              << std::endl;
+    std::exit(EXIT_FAILURE);
   }
 
   vertices.clear();
@@ -111,31 +109,23 @@ void WassersteinBarycenter::dump_debug(bool exit_after_dump_debug) {
 
 void WassersteinBarycenter::update_discrete_plan() {
   if (discrete_plan.size() != n_column_variables + 1) {
-    std::cout << "Linear programming part is not initialized before calling "
-                 "update_discrete_plan()."
-              << std::endl;
-    initialize_lp();
+    if (lp_solve_called) {
+      std::cout << "No dicrete plan data found.";
+      std::exit(EXIT_FAILURE);
+    }
   }
 
+  lp_solve_called = true;
   if (potential.size() != n_column_variables + 1) {
     std::cout << "Potential is not of correct size when calling "
                  "update_discrete_plan()."
               << std::endl;
-    update_partition();
+    std::exit(EXIT_FAILURE);
   }
 
-  if (valid_column_variables.size() == vertices.size()) {
-    int i = 0;
-    for (int j : valid_column_variables) {
-      auto v = vertices[i];
-      i++;
-      double a = cell_area[v];
-      double squared_norm =
-          std::pow(v.point().x(), 2) + std::pow(v.point().y(), 2);
-      glp_set_obj_coef(lp, j,
-                       potential[j] * marginal_coefficients.front() -
-                           a * squared_norm);
-    }
+  for (int j = 1; j <= n_column_variables; j++) {
+    glp_set_obj_coef(
+        lp, j, potential[j] * marginal_coefficients.front() - squared_norm[j]);
   }
 
   glp_simplex(lp, NULL);
@@ -147,13 +137,13 @@ void WassersteinBarycenter::update_discrete_plan() {
 }
 
 void WassersteinBarycenter::update_column_variables() {
-  dumped_column_variables.clear();
+  dumb_column_variables.clear();
   valid_column_variables.clear();
   for (int j = 1; j <= n_column_variables; j++) {
     if (discrete_plan[j] != 0) {
       valid_column_variables.push_back(j);
     } else {
-      dumped_column_variables.insert(j);
+      dumb_column_variables.insert(j);
     }
   }
 }
@@ -176,14 +166,15 @@ void WassersteinBarycenter::print_info() {
   partition.label.clear();
 
   std::cout << std::endl
-            << "Probability\tPotential\tGradient\t     Point" << std::endl;
+            << "Index\tProbability\tPotential\tGradient\t     Point"
+            << std::endl;
   int i = 0;
   for (int j : valid_column_variables) {
     auto v = vertices[i];
     i++;
     partition.label.insert({v, std::to_string(j)});
-    std::printf(" %.4f \t%.4f\t\t%.4f\t\t(%.4f, %.4f)\n", discrete_plan[j],
-                potential[j], gradient[j],
+    std::printf("%i\t %.4f \t%.4f\t\t%.4f\t\t(%.4f, %.4f)\n", j,
+                discrete_plan[j], potential[j], gradient[j],
                 CGAL::to_double(support_points[j].x()),
                 CGAL::to_double(support_points[j].y()));
   }
@@ -192,7 +183,7 @@ void WassersteinBarycenter::print_info() {
       std::cout << "In the result above, we remove the following points "
                    "combinations in the discrete plan:"
                 << std::endl;
-      for (int j : dumped_column_variables) {
+      for (int j : dumb_column_variables) {
         std::cout << "(";
         for (auto n : column_variables[j]) {
           std::cout << n << ", ";
@@ -201,12 +192,16 @@ void WassersteinBarycenter::print_info() {
       }
       std::cout << "\b\b. ";
     }
-    std::cout << "It remains " << valid_column_variables.size()
-              << " variables with (internal) index: ";
-    for (auto j : valid_column_variables) {
-      std::cout << j << ", ";
-    }
-    std::cout << "\b\b." << std::endl;
+    /* std::cout << "It remains " << valid_column_variables.size() */
+    /*           << " variables with (internal) index: "; */
+    /* for (auto j : valid_column_variables) { */
+    /*   std::cout << j << ", "; */
+    /* } */
+    /* std::cout << "\b\b." << std::endl; */
+  } else {
+    std::cout << "All " << n_column_variables
+              << " column varibales are considered in current calculation."
+              << std::endl;
   }
 }
 
@@ -218,6 +213,8 @@ struct solution {
 void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   tolerance = e;
   initialize_lp();
+  potential = std::vector<double>(n_column_variables + 1);
+  gradient = std::vector<double>(n_column_variables + 1);
   int n_iteration = 0;
   std::map<std::vector<int>, std::pair<std::vector<double>, double>> plans{};
   std::map<std::vector<int>, std::vector<double>> cache_discrete_plan{};
@@ -270,7 +267,6 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       if (n == 1) {
         std::cout << "We reach the solution." << std::endl;
       } else {
-        std::cout << "Get a solution loop of length " << n << "." << std::endl;
         for (auto plan : plans) {
           std::cout << "\b\b" << std::endl;
           discrete_plan = cache_discrete_plan[plan.first];
@@ -280,6 +276,8 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
           error = plan.second.second;
           dump_debug(false);
         }
+        std::cout << "Get an invalid solution loop of length " << n << "."
+                  << std::endl;
         std::exit(EXIT_FAILURE);
       }
     }
