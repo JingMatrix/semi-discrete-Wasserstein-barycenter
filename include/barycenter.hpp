@@ -99,7 +99,7 @@ public:
   double tolerance;
   double error = std::numeric_limits<double>::max();
 
-  void dump_debug();
+  void dump_debug(bool exit_after_dump_debug=true);
 
   ~WassersteinBarycenter() {
     glp_delete_prob(lp);

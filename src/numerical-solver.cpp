@@ -65,7 +65,7 @@ void WassersteinBarycenter::update_partition() {
   }
 }
 
-void WassersteinBarycenter::dump_debug() {
+void WassersteinBarycenter::dump_debug(bool exit_after_dump_debug) {
   std::cout << std::endl << "Start to dump debug information." << std::endl;
   std::cout << "Vertices to insert are written to file data/weight_points."
             << std::endl;
@@ -84,9 +84,18 @@ void WassersteinBarycenter::dump_debug() {
       std::cout << "But there are " << n_vertices_no_cell
                 << " vertices has no cells in current support." << std::endl;
     } else {
-      std::cout << "Borders are:" << std::endl;
+      /* std::cout << "Vertices are:" << std::endl; */
+      /* for (auto v : vertices) { */
+      /*   std::cout << v << std::endl; */
+      /* } */
+      /* std::cout << "Borders are:" << std::endl; */
       for (auto p : partition.borders) {
-        std::cerr << p.first << "\t--+--\t" << p.second << std::endl;
+        double a = std::abs(K::Vector_2(p.first) * K::Vector_2(p.second));
+        if (a > 10e-6) {
+          std::cout << "The following pair of border info is invalid."
+                    << std::endl;
+          std::cerr << p.first << "\t--+--\t" << p.second << std::endl;
+        }
       }
       dump_semi_discrete_solver();
     }
@@ -95,7 +104,9 @@ void WassersteinBarycenter::dump_debug() {
               << std::endl;
   }
   std::cout << std::endl << "End dumping debug information." << std::endl;
-  std::exit(EXIT_FAILURE);
+  if (exit_after_dump_debug) {
+    std::exit(EXIT_FAILURE);
+  }
 }
 
 void WassersteinBarycenter::update_discrete_plan() {
@@ -209,6 +220,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   initialize_lp();
   int n_iteration = 0;
   std::map<std::vector<int>, std::pair<std::vector<double>, double>> plans{};
+  std::map<std::vector<int>, std::vector<double>> cache_discrete_plan{};
   bool start_loop = false;
   bool encounter_loop = false;
   for (int i = 0; i < step; i++) {
@@ -219,9 +231,9 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
         start_loop = true;
         encounter_loop = true;
         break;
-      } else if (start_loop) {
+      }
+      if (start_loop) {
         encounter_loop = true;
-        break;
       } else {
         start_loop = true;
         plans.clear();
@@ -232,6 +244,10 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
     /* print_info(); */
     if (error < tolerance) {
       plans.insert({valid_column_variables, {potential, error}});
+      cache_discrete_plan.insert({valid_column_variables, discrete_plan});
+    }
+    if (encounter_loop) {
+      break;
     }
   }
   std::cout << std::endl;
@@ -254,9 +270,17 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       if (n == 1) {
         std::cout << "We reach the solution." << std::endl;
       } else {
-        std::cout << "Get a solution loop with length " << n << "."
-                  << std::endl;
-        dump_debug();
+        std::cout << "Get a solution loop of length " << n << "." << std::endl;
+        for (auto plan : plans) {
+          std::cout << "\b\b" << std::endl;
+          discrete_plan = cache_discrete_plan[plan.first];
+          update_column_variables();
+          potential = plan.second.first;
+          update_partition();
+          error = plan.second.second;
+          dump_debug(false);
+        }
+        std::exit(EXIT_FAILURE);
       }
     }
   }
