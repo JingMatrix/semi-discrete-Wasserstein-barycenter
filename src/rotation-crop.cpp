@@ -269,7 +269,8 @@ void PowerDiagram::crop_algorithm() {
 
       bool next_insert_center =
           (not next_is_infinite) && inside_support[current_f->neighbor(i)];
-      if (center_inserted or next_insert_center) {
+      if (center_inserted or next_insert_center or
+          support_hits.get_count() >= 2) {
         K::Segment_2 edge = {v.point(), v_end.point()};
         bool boder_exists = borders.contains(edge.opposite());
 
@@ -287,6 +288,22 @@ void PowerDiagram::crop_algorithm() {
           borders.insert({edge, K::Segment_2{center[current_f],
                                              center[current_f->neighbor(i)]}});
         }
+
+        if (not boder_exists && support_hits.get_count() >= 2) {
+          /* might need deal with non-convex support, in which case */
+          /* the border is a chain of segments */
+          auto intersection_points = support_hits.intersection_points();
+          if (intersection_points.size() > 2) {
+            std::cout << "We get more than 2 intersection points of type "
+                      << intersection_type
+                      << ", this is not handled in current state." << std::endl;
+            std::exit(EXIT_FAILURE);
+          } else {
+            K::Segment_2 edge = {v.point(), v_end.point()};
+            borders.insert({edge, K::Segment_2{intersection_points.front(),
+                                               intersection_points.back()}});
+          }
+        }
       }
 
       if (vertices.size() > 0) {
@@ -302,15 +319,9 @@ void PowerDiagram::crop_algorithm() {
           support_hits.need_insert_support_vertices = true;
         }
 
-        if (not inside_support[current_f] &&
-            not inside_support[current_f->neighbor(i)] &&
-            support_hits.get_count() > 1) {
+        if (support_hits.get_count() >= 2) {
           /* std::cout << "Traversing the support." << std::endl; */
           support_hits.need_insert_support_vertices = true;
-          K::Segment_2 edge = {v.point(), v_end.point()};
-          auto intersection_points = support_hits.intersection_points();
-          borders.insert({edge, K::Segment_2{intersection_points.front(),
-                                             intersection_points.back()}});
         }
       }
 

@@ -38,6 +38,7 @@ int get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
       barycenter_problem->valid_column_variables;
   const int n_variables = variables.size();
   auto &borders = barycenter_problem->partition.borders;
+  bool has_vertex_out_of_support = false;
   for (int i = 0; i < n_variables; i++) {
     for (int j = 0; j < n_variables; j++) {
       if (j <= i) {
@@ -73,17 +74,18 @@ int get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
       }
       sum += gsl_matrix_get(df, i, j);
     }
-    if (sum != 0) {
-      gsl_matrix_set(df, i, i, -sum);
-    } else {
+    gsl_matrix_set(df, i, i, -sum);
+    if (sum == 0) {
       std::cout << "The column varible " << variables[i]
-                << " is pushed outside of current support."
-                << std::endl;
-
-      return GSL_FAILURE;
+                << " is pushed outside of current support." << std::endl;
+      has_vertex_out_of_support = true;
     }
   }
-  return GSL_SUCCESS;
+  if (has_vertex_out_of_support) {
+    return GSL_FAILURE;
+  } else {
+    return GSL_SUCCESS;
+  }
 }
 
 int get_jacobian_uniform_measure_lower_dimension(
@@ -175,8 +177,7 @@ int WassersteinBarycenter::semi_discrete(int steps) {
       /*              "function or its derivative evaluated to Inf or NaN." */
       /*           << std::endl; */
       if (partition.number_of_hidden_vertices() == 0) {
-        std::cout << std::endl
-                  << "Encounter sigularity for unknown reason in the " << iter
+        std::cout << "Encounter sigularity for unknown reason in the " << iter
                   << " iteration, dump data for "
                      "analysis."
                   << std::endl;

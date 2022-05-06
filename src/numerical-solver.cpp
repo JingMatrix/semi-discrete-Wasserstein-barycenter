@@ -227,7 +227,6 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
         plans.clear();
       }
     }
-    std::cout << std::endl;
     potential = std::vector<double>(n_column_variables + 1);
     n_iteration = semi_discrete(30);
     /* print_info(); */
@@ -243,8 +242,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       dump_semi_discrete_solver();
     } else {
       std::cout << "Finish the program after required " << step
-                << " iterations, the barycenter is not found yet."
-                << std::endl;
+                << " iterations, the barycenter is not found yet." << std::endl;
     }
   } else {
     if (not encounter_loop) {
@@ -258,6 +256,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       } else {
         std::cout << "Get a solution loop with length " << n << "."
                   << std::endl;
+        dump_debug();
       }
     }
   }
