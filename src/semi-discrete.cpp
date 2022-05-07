@@ -173,7 +173,8 @@ int WassersteinBarycenter::semi_discrete(int steps) {
   }
   if (index_of_maximun_proba < FDF.n) {
     int tmp = valid_column_variables[index_of_maximun_proba];
-    valid_column_variables[index_of_maximun_proba] = valid_column_variables[FDF.n];
+    valid_column_variables[index_of_maximun_proba] =
+        valid_column_variables[FDF.n];
     valid_column_variables[FDF.n] = tmp;
   }
 
@@ -198,25 +199,24 @@ int WassersteinBarycenter::semi_discrete(int steps) {
     }
 
     if (index_out_of_support.size() > 0) {
-      std::cout << "These step data will cause problem:" << std::endl;
       double max = gsl_vector_max(semi_discrete_solver->x);
       double sum = 0;
       for (int i : index_out_of_support) {
+        sum += gsl_vector_get(semi_discrete_solver->dx, i);
+      }
+      std::cout << "We fix the following data that will cause problem:"
+                << std::endl;
+      std::cout << "Index\tx\t\tdx\t\tnew dx" << std::endl;
+      for (int i : index_out_of_support) {
         double step = gsl_vector_get(semi_discrete_solver->dx, i);
         std::cout << valid_column_variables[i]
-                  << "\t:" << gsl_vector_get(semi_discrete_solver->x, i)
-                  << "\t-+->\t" << step << std::endl;
-        sum += step;
-      }
-      std::cout << "We fix the steps manually to the following:" << std::endl;
-      for (int i : index_out_of_support) {
-        gsl_vector_set(semi_discrete_solver->dx, i,
-                       gsl_vector_get(semi_discrete_solver->dx, i) *
-                           (max - gsl_vector_get(semi_discrete_solver->x, i)) /
-                           sum);
-        double step = gsl_vector_get(semi_discrete_solver->dx, i);
-        std::cout << valid_column_variables[i] << "\t-+->\t" << step
-                  << std::endl;
+                  << "\t" << gsl_vector_get(semi_discrete_solver->x, i)
+                  << "\t" << step;
+        gsl_vector_set(
+            semi_discrete_solver->dx, i,
+            step * (max - gsl_vector_get(semi_discrete_solver->x, i)) / sum);
+        step = gsl_vector_get(semi_discrete_solver->dx, i);
+        std::cout << valid_column_variables[i] << "\t" << step << std::endl;
       }
       index_out_of_support.clear();
     }
@@ -241,7 +241,8 @@ int WassersteinBarycenter::semi_discrete(int steps) {
 
   if (index_of_maximun_proba < FDF.n) {
     int tmp = valid_column_variables[index_of_maximun_proba];
-    valid_column_variables[index_of_maximun_proba] = valid_column_variables[FDF.n];
+    valid_column_variables[index_of_maximun_proba] =
+        valid_column_variables[FDF.n];
     valid_column_variables[FDF.n] = tmp;
   }
 

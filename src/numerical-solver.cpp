@@ -213,7 +213,7 @@ struct solution {
 
 void WassersteinBarycenter::iteration_solver(unsigned int step, double e,
                                              double penalty) {
-  tolerance = e * penalty;
+  tolerance = e;
   initialize_lp();
   potential = std::vector<double>(n_column_variables + 1);
   gradient = std::vector<double>(n_column_variables + 1);
