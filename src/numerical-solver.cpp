@@ -107,7 +107,7 @@ void WassersteinBarycenter::dump_debug(bool exit_after_dump_debug) {
   }
 }
 
-void WassersteinBarycenter::update_discrete_plan() {
+void WassersteinBarycenter::update_discrete_plan(double penalty) {
   if (discrete_plan.size() != n_column_variables + 1) {
     if (lp_solve_called) {
       std::cout << "No dicrete plan data found.";
@@ -124,8 +124,9 @@ void WassersteinBarycenter::update_discrete_plan() {
   }
 
   for (int j = 1; j <= n_column_variables; j++) {
-    glp_set_obj_coef(
-        lp, j, potential[j] * marginal_coefficients.front() - squared_norm[j]);
+    glp_set_obj_coef(lp, j,
+                     penalty * potential[j] * marginal_coefficients.front() -
+                         squared_norm[j]);
   }
 
   glp_simplex(lp, NULL);
@@ -210,8 +211,9 @@ struct solution {
   std::vector<double> potential;
 };
 
-void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
-  tolerance = e;
+void WassersteinBarycenter::iteration_solver(unsigned int step, double e,
+                                             double penalty) {
+  tolerance = e * penalty;
   initialize_lp();
   potential = std::vector<double>(n_column_variables + 1);
   gradient = std::vector<double>(n_column_variables + 1);
@@ -221,7 +223,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   bool start_loop = false;
   bool encounter_loop = false;
   for (int i = 0; i < step; i++) {
-    update_discrete_plan();
+    update_discrete_plan(penalty);
     update_column_variables();
     if (plans.contains(valid_column_variables)) {
       if (plans.size() == 1) {
@@ -237,7 +239,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       }
     }
     potential = std::vector<double>(n_column_variables + 1);
-    n_iteration = semi_discrete(30);
+    n_iteration = semi_discrete(50);
     /* print_info(); */
     if (error < tolerance) {
       plans.insert({valid_column_variables, {potential, error}});
@@ -247,7 +249,9 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       break;
     }
   }
-  std::cout << std::endl;
+  std::cout << std::endl
+            << "We have solved " << cache_discrete_plan.size()
+            << " semi-discrete optimal transport problem." << std::endl;
   if (not start_loop) {
     if (n_iteration == 0) {
       std::cout << "Semi-discrete optimal transport solver is not working."
@@ -276,8 +280,20 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
           error = plan.second.second;
           dump_debug(false);
         }
-        std::cout << "Get an invalid solution loop of length " << n << "."
-                  << std::endl;
+        std::cout << "Get an invalid solution loop of length " << n
+                  << ", should decrease current penalty factor: " << penalty
+                  << "." << std::endl;
+        std::cout
+            << "An easy way to achieve this is to change the first marginal to "
+               "a smaller real number. "
+            << std::endl;
+        std::cout << "For example, we can use: "
+                  << marginal_coefficients.front() * 0.01 << " ";
+        for (auto cit = ++marginal_coefficients.begin();
+             cit != marginal_coefficients.end(); cit++) {
+          std::cout << *cit << " ";
+        }
+        std::cout << "\b." << std::endl;
         std::exit(EXIT_FAILURE);
       }
     }

@@ -164,6 +164,19 @@ int WassersteinBarycenter::semi_discrete(int steps) {
   FDF.n = valid_column_variables.size() - 1;
   FDF.params = this;
   gsl_vector *x = gsl_vector_alloc(FDF.n);
+  int index_of_maximun_proba = FDF.n;
+  for (int i = 0; i <= FDF.n; i++) {
+    if (discrete_plan[valid_column_variables[i]] >
+        discrete_plan[valid_column_variables[index_of_maximun_proba]]) {
+      index_of_maximun_proba = i;
+    }
+  }
+  if (index_of_maximun_proba < FDF.n) {
+    int tmp = valid_column_variables[index_of_maximun_proba];
+    valid_column_variables[index_of_maximun_proba] = valid_column_variables[FDF.n];
+    valid_column_variables[FDF.n] = tmp;
+  }
+
   for (int i = 0; i < FDF.n; i++) {
     gsl_vector_set(x, i, potential[valid_column_variables[i]]);
     /* gsl_vector_set_all(x, 0); */
@@ -225,6 +238,12 @@ int WassersteinBarycenter::semi_discrete(int steps) {
     status = gsl_multiroot_test_residual(semi_discrete_solver->f, tolerance);
     iter++;
   } while (status == GSL_CONTINUE && iter < steps);
+
+  if (index_of_maximun_proba < FDF.n) {
+    int tmp = valid_column_variables[index_of_maximun_proba];
+    valid_column_variables[index_of_maximun_proba] = valid_column_variables[FDF.n];
+    valid_column_variables[FDF.n] = tmp;
+  }
 
   double min = potential[valid_column_variables.front()];
   error = 0;

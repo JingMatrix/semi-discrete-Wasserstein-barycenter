@@ -12,7 +12,7 @@ for i in range(0, 6):
 wps.close()
 
 dists = open(sys.path[0] + "/marginals", "w")
-for j in range(1, 3):
+for j in range(1, 5):
     supp_size = random.randint(2, 4)
     for i in range(0, supp_size):
         dists.write(str(random.uniform(0.1, 0.8)) + "\t" +

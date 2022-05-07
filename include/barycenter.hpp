@@ -68,7 +68,7 @@ private:
   std::unordered_set<int> dumb_column_variables;
   /* default discrete plan is the independent plan */
   std::vector<double> discrete_plan = {0};
-  void update_discrete_plan();
+  void update_discrete_plan(double penalty = 0.01);
   bool lp_solve_called = false;
   void update_column_variables();
 
@@ -89,7 +89,8 @@ public:
                         std::list<double> marginal_coefficients = {});
   static std::list<double> get_marginal_coefficients(int argc, char *argv[]);
 
-  void iteration_solver(unsigned int step, double tolerance = 10e-5);
+  void iteration_solver(unsigned int step, double tolerance = 10e-5,
+                        double penalty = 0.01);
 
   std::vector<std::vector<int>> column_variables{{0}};
   std::vector<int> valid_column_variables;
