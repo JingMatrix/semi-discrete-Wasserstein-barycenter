@@ -82,7 +82,7 @@ int get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
       if (i == n_variables - 1) {
         std::cout << "This column variable is not free." << std::endl;
       } else {
-        barycenter_problem->index_out_of_support.push_back(i);
+        barycenter_problem->index_out_of_support.insert(i);
       }
     }
   }
@@ -169,7 +169,7 @@ int WassersteinBarycenter::semi_discrete(int steps) {
     /* gsl_vector_set_all(x, 0); */
   }
 
-  const gsl_multiroot_fdfsolver_type *T = gsl_multiroot_fdfsolver_hybridsj;
+  const gsl_multiroot_fdfsolver_type *T = gsl_multiroot_fdfsolver_newton;
   semi_discrete_solver = gsl_multiroot_fdfsolver_alloc(T, FDF.n);
   gsl_multiroot_fdfsolver_set(semi_discrete_solver, &FDF, x);
 
@@ -177,36 +177,44 @@ int WassersteinBarycenter::semi_discrete(int steps) {
   int iter = 0;
   do {
     status = gsl_multiroot_fdfsolver_iterate(semi_discrete_solver);
+
     if (status == GSL_EBADFUNC) {
-      /* std::cout << "The iteration encountered a singular point where the "
-       */
-      /*              "function or its derivative evaluated to Inf or NaN." */
-      /*           << std::endl; */
-      if (index_out_of_support.size() > 0) {
-        std::cout << "Current step data that cause the problem:" << std::endl;
-        for (int i : index_out_of_support) {
-          double step = gsl_vector_get(semi_discrete_solver->dx, i);
-          std::cout << valid_column_variables[i] << "\t->\t" << step
-                    << std::endl;
-          if (step < 0) {
-            gsl_vector_set(semi_discrete_solver->dx, i, 0);
-          } else {
-            gsl_vector_set(semi_discrete_solver->dx, i, 2 * step);
-          }
-        }
-        std::cout << "We fix then manually to the following:" << std::endl;
-        for (int i : index_out_of_support) {
-          double step = gsl_vector_get(semi_discrete_solver->dx, i);
-          std::cout << valid_column_variables[i] << "\t->\t" << step
-                    << std::endl;
-        }
-      } else {
-        std::cout << "Encounter sigularity not handled in the " << iter
-                  << " iteration, dump data for analysis." << std::endl;
-        dump_debug();
-        break;
-      }
+      std::cout << "The iteration encountered a singular point where the "
+                   "function or its derivative evaluated to Inf or NaN."
+                << std::endl;
     }
+
+    if (index_out_of_support.size() > 0) {
+      std::cout << "These step data will cause problem:" << std::endl;
+      double max = gsl_vector_max(semi_discrete_solver->x);
+      double sum = 0;
+      for (int i : index_out_of_support) {
+        double step = gsl_vector_get(semi_discrete_solver->dx, i);
+        std::cout << valid_column_variables[i]
+                  << "\t:" << gsl_vector_get(semi_discrete_solver->x, i)
+                  << "\t-+->\t" << step << std::endl;
+        sum += step;
+      }
+      std::cout << "We fix the steps manually to the following:" << std::endl;
+      for (int i : index_out_of_support) {
+        gsl_vector_set(semi_discrete_solver->dx, i,
+                       gsl_vector_get(semi_discrete_solver->dx, i) *
+                           (max - gsl_vector_get(semi_discrete_solver->x, i)) /
+                           sum);
+        double step = gsl_vector_get(semi_discrete_solver->dx, i);
+        std::cout << valid_column_variables[i] << "\t-+->\t" << step
+                  << std::endl;
+      }
+      index_out_of_support.clear();
+    }
+
+    /* { */
+    /* std::cout << "Encounter sigularity not handled in the " << iter */
+    /* << " iteration, dump data for analysis." << std::endl; */
+    /* dump_debug(); */
+    /* break; */
+    /* } */
+
     if (status == GSL_ENOPROG) {
       std::cout << "The iteration is not making any progress, preventing the "
                    "algorithm from continuing."

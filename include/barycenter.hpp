@@ -98,7 +98,7 @@ public:
   std::vector<K::Point_2> support_points{K::Point_2(0, 0)};
   std::vector<double> potential;
   std::vector<double> gradient;
-  std::vector<int> index_out_of_support;
+  std::set<int> index_out_of_support;
   void update_partition();
   double tolerance;
   double error = std::numeric_limits<double>::max();
