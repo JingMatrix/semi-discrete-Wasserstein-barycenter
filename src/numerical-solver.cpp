@@ -82,11 +82,6 @@ void WassersteinBarycenter::dump_debug(bool exit_after_dump_debug) {
       std::cout << "But there are " << n_vertices_no_cell
                 << " vertices has no cells in current support." << std::endl;
     } else {
-      /* std::cout << "Vertices are:" << std::endl; */
-      /* for (auto v : vertices) { */
-      /*   std::cout << v << std::endl; */
-      /* } */
-      /* std::cout << "Borders are:" << std::endl; */
       for (auto p : partition.borders) {
         double a = std::abs(K::Vector_2(p.first) * K::Vector_2(p.second));
         if (a > 10e-6) {
@@ -193,12 +188,6 @@ void WassersteinBarycenter::print_info() {
       }
       std::cout << "\b\b. ";
     }
-    /* std::cout << "It remains " << valid_column_variables.size() */
-    /*           << " variables with (internal) index: "; */
-    /* for (auto j : valid_column_variables) { */
-    /*   std::cout << j << ", "; */
-    /* } */
-    /* std::cout << "\b\b." << std::endl; */
   } else {
     std::cout << "All " << n_column_variables
               << " column varibales are considered in current calculation."
@@ -206,16 +195,37 @@ void WassersteinBarycenter::print_info() {
   }
 }
 
-struct solution {
-  std::vector<int> column_variables;
-  std::vector<double> potential;
-};
+bool WassersteinBarycenter::check_discrete_barycenter_unique() {
+  update_discrete_plan(0);
+  update_column_variables();
+  for (int j : valid_column_variables) {
+    glp_set_obj_coef(lp, j, 0);
+  }
+  for (int j : dumb_column_variables) {
+    glp_set_obj_coef(lp, j, 1);
+  }
+  glp_simplex(lp, NULL);
+  double m = glp_get_obj_val(lp);
+  if (m == 0) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
 void WassersteinBarycenter::iteration_solver(unsigned int step, double e,
                                              double penalty) {
   tolerance = e;
   initialize_lp();
   potential = std::vector<double>(n_column_variables + 1);
+  std::cout << std::endl;
+  if (check_discrete_barycenter_unique()) {
+    std::cout << "The discrete barycenter is unique." << std::endl;
+    penalty = 0;
+  } else {
+    std::cout << "The discrete barycenter is not unique." << std::endl;
+  }
+  std::cout << std::endl;
   gradient = std::vector<double>(n_column_variables + 1);
   int n_iteration = 0;
   std::map<std::vector<int>, std::pair<std::vector<double>, double>> plans{};
@@ -223,8 +233,10 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e,
   bool start_loop = false;
   bool encounter_loop = false;
   for (int i = 0; i < step; i++) {
-    update_discrete_plan(penalty);
-    update_column_variables();
+    if (penalty != 0) {
+      update_discrete_plan(penalty);
+      update_column_variables();
+    }
     if (plans.contains(valid_column_variables)) {
       if (plans.size() == 1) {
         start_loop = true;

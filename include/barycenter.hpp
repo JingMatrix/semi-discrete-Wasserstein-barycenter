@@ -71,6 +71,7 @@ private:
   void update_discrete_plan(double penalty = 0.01);
   bool lp_solve_called = false;
   void update_column_variables();
+  bool check_discrete_barycenter_unique();
 
   /* Numerical solution */
   /* Semi discrete optimal transport solver */
