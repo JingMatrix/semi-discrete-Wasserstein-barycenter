@@ -32,6 +32,7 @@ void WassersteinBarycenter::update_partition() {
   vertices.clear();
 
   double partition_area = 0;
+
   for (int j : valid_column_variables) {
     vertices.push_back(PowerDiagram::vertex{support_points[j], potential[j]});
   }
@@ -102,7 +103,7 @@ void WassersteinBarycenter::dump_debug(bool exit_after_dump_debug) {
   }
 }
 
-void WassersteinBarycenter::update_discrete_plan(double penalty) {
+void WassersteinBarycenter::update_discrete_plan() {
   if (discrete_plan.size() != n_column_variables + 1) {
     if (lp_solve_called) {
       std::cout << "No dicrete plan data found.";
@@ -120,7 +121,7 @@ void WassersteinBarycenter::update_discrete_plan(double penalty) {
 
   for (int j = 1; j <= n_column_variables; j++) {
     glp_set_obj_coef(lp, j,
-                     penalty * potential[j] * marginal_coefficients.front() -
+                     2 * potential[j] * marginal_coefficients.front() -
                          squared_norm[j]);
   }
 
@@ -195,36 +196,13 @@ void WassersteinBarycenter::print_info() {
   }
 }
 
-bool WassersteinBarycenter::check_discrete_barycenter_unique() {
-  update_discrete_plan(0);
-  update_column_variables();
-  for (int j : valid_column_variables) {
-    glp_set_obj_coef(lp, j, 0);
-  }
-  for (int j : dumb_column_variables) {
-    glp_set_obj_coef(lp, j, 1);
-  }
-  glp_simplex(lp, NULL);
-  double m = glp_get_obj_val(lp);
-  if (m == 0) {
-    return true;
-  } else {
-    return false;
-  }
-}
+bool WassersteinBarycenter::check_discrete_barycenter_unique() { return false; }
 
-void WassersteinBarycenter::iteration_solver(unsigned int step, double e,
-                                             double penalty) {
+void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   tolerance = e;
   initialize_lp();
   potential = std::vector<double>(n_column_variables + 1);
   std::cout << std::endl;
-  if (check_discrete_barycenter_unique()) {
-    std::cout << "The discrete barycenter is unique." << std::endl;
-    penalty = 0;
-  } else {
-    std::cout << "The discrete barycenter is not unique." << std::endl;
-  }
   std::cout << std::endl;
   gradient = std::vector<double>(n_column_variables + 1);
   int n_iteration = 0;
@@ -233,10 +211,8 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e,
   bool start_loop = false;
   bool encounter_loop = false;
   for (int i = 0; i < step; i++) {
-    if (penalty != 0) {
-      update_discrete_plan(penalty);
-      update_column_variables();
-    }
+    update_discrete_plan();
+    update_column_variables();
     if (plans.contains(valid_column_variables)) {
       if (plans.size() == 1) {
         start_loop = true;
@@ -250,12 +226,16 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e,
         plans.clear();
       }
     }
-    potential = std::vector<double>(n_column_variables + 1);
-    n_iteration = semi_discrete(50);
-    /* print_info(); */
+    potential = std::vector<double>(n_column_variables + 1, -1);
+    n_iteration = semi_discrete(70);
     if (error < tolerance) {
       plans.insert({valid_column_variables, {potential, error}});
       cache_discrete_plan.insert({valid_column_variables, discrete_plan});
+    } else {
+      std::cout << "Fail to solve a semi-discrete problem within required "
+                   "error after "
+                << n_iteration << " iterations." << std::endl;
+      std::exit(EXIT_FAILURE);
     }
     if (encounter_loop) {
       break;
@@ -281,31 +261,29 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e,
     } else {
       int n = plans.size();
       if (n == 1) {
-        std::cout << "We reach the solution." << std::endl;
+        std::cout << "We reach the solution with error " << error << "."
+                  << std::endl;
       } else {
         for (auto plan : plans) {
+          double cost = 0;
           std::cout << "\b\b" << std::endl;
           discrete_plan = cache_discrete_plan[plan.first];
-          update_column_variables();
           potential = plan.second.first;
+          for (int j = 1; j <= n_column_variables; j++) {
+            cost += (potential[j] * marginal_coefficients.front() -
+                     squared_norm[j]) *
+                    discrete_plan[j];
+          }
+          update_column_variables();
           update_partition();
           error = plan.second.second;
           dump_debug(false);
+          std::cout << "This linear programming has object value " << cost
+                    << "." << std::endl;
         }
-        std::cout << "Get an invalid solution loop of length " << n
-                  << ", should decrease current penalty factor: " << penalty
-                  << "." << std::endl;
-        std::cout
-            << "An easy way to achieve this is to change the first marginal to "
-               "a smaller real number. "
-            << std::endl;
-        std::cout << "For example, we can use: "
-                  << marginal_coefficients.front() * 0.01 << " ";
-        for (auto cit = ++marginal_coefficients.begin();
-             cit != marginal_coefficients.end(); cit++) {
-          std::cout << *cit << " ";
-        }
-        std::cout << "\b." << std::endl;
+
+        std::cout << "Get an invalid solution loop of length " << n << "."
+                  << std::endl;
         std::exit(EXIT_FAILURE);
       }
     }

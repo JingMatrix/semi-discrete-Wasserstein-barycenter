@@ -180,7 +180,6 @@ int WassersteinBarycenter::semi_discrete(int steps) {
 
   for (int i = 0; i < FDF.n; i++) {
     gsl_vector_set(x, i, potential[valid_column_variables[i]]);
-    /* gsl_vector_set_all(x, 0); */
   }
 
   const gsl_multiroot_fdfsolver_type *T = gsl_multiroot_fdfsolver_newton;
