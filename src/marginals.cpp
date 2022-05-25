@@ -79,9 +79,12 @@ WassersteinBarycenter::WassersteinBarycenter(K::Iso_rectangle_2 bbox,
   read_marginals_data(filename, coefs);
   if (not bbox.is_degenerate()) {
     support_box = bbox;
+    for (int i = 0; i < 4; i++) {
+      support_polygon.push_back(bbox.vertex(i));
+    }
     crop_style = Rectangle;
   } else {
-    std::cerr << "Invalid rectangle supoort." << std::endl;
+    std::cerr << "Invalid rectangle support." << std::endl;
     std::exit(EXIT_FAILURE);
   }
 }
@@ -94,7 +97,7 @@ WassersteinBarycenter::WassersteinBarycenter(PowerDiagram::polygon support,
     support_polygon = support;
     crop_style = Polygon;
   } else {
-    std::cerr << "Invalid polygon supoort." << std::endl;
+    std::cerr << "Invalid polygon support." << std::endl;
     std::exit(EXIT_FAILURE);
   }
 }

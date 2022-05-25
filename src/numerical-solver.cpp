@@ -91,7 +91,9 @@ void WassersteinBarycenter::dump_debug(bool exit_after_dump_debug) {
           std::cerr << p.first << "\t--+--\t" << p.second << std::endl;
         }
       }
-      dump_semi_discrete_solver();
+      if (exit_after_dump_debug) {
+        dump_semi_discrete_solver();
+      }
     }
   } else {
     std::cout << "Current power diagram has no vertices in the support"
@@ -120,9 +122,8 @@ void WassersteinBarycenter::update_discrete_plan() {
   }
 
   for (int j = 1; j <= n_column_variables; j++) {
-    glp_set_obj_coef(lp, j,
-                     2 * potential[j] * marginal_coefficients.front() -
-                         squared_norm[j]);
+    glp_set_obj_coef(
+        lp, j, potential[j] * marginal_coefficients.front() - squared_norm[j]);
   }
 
   glp_simplex(lp, NULL);
@@ -142,6 +143,46 @@ void WassersteinBarycenter::update_column_variables() {
     } else {
       dumb_column_variables.insert(j);
     }
+  }
+}
+
+void WassersteinBarycenter::update_potential() {
+  const int n = valid_column_variables.size();
+  for (auto k : dumb_column_variables) {
+    double u_star = -10e5;
+    for (int i = 0; i < n; i++) {
+      const int j = valid_column_variables[i];
+      const auto cell = partition.cropped_cells[vertices[i]];
+      const double u_star_defined = 0.5 * (squared_norm[j] - potential[j]);
+      for (auto p : cell.vertices()) {
+        double comp = K::Vector_2(K::Point_2(0, 0), p) *
+                          K::Vector_2(support_points[j], support_points[k]) +
+                      u_star_defined;
+        if (comp > u_star) {
+          u_star = comp;
+        }
+      }
+    }
+    potential[k] = squared_norm[k] - 2 * u_star;
+	/* sensitive test */
+    /* potential[k] += 0.001; */
+  }
+  double average = 0;
+  potential[0] = 0;
+  for (auto p : potential) {
+    average += p;
+  }
+  average /= n_column_variables;
+  for (int i = 1; i <= n_column_variables; i++) {
+    potential[i] -= average;
+  }
+}
+
+void WassersteinBarycenter::reset_valid_colunm_variables() {
+  valid_column_variables.clear();
+  dumb_column_variables.clear();
+  for (int j = 1; j <= n_column_variables; j++) {
+    valid_column_variables.push_back(j);
   }
 }
 
@@ -165,10 +206,10 @@ void WassersteinBarycenter::print_info() {
   std::cout << std::endl
             << "Index\tProbability\tPotential\tGradient\t     Point"
             << std::endl;
-  int i = 0;
-  for (int j : valid_column_variables) {
-    auto v = vertices[i];
-    i++;
+  for (auto v : vertices) {
+    int j = std::distance(
+        support_points.begin(),
+        std::find(support_points.begin(), support_points.end(), v.point()));
     partition.label.insert({v, std::to_string(j)});
     std::printf("%i\t %.4f \t%.4f\t\t%.4f\t\t(%.4f, %.4f)\n", j,
                 discrete_plan[j], potential[j], gradient[j],
@@ -229,6 +270,8 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
     potential = std::vector<double>(n_column_variables + 1, -1);
     n_iteration = semi_discrete(70);
     if (error < tolerance) {
+      update_partition();
+      update_potential();
       plans.insert({valid_column_variables, {potential, error}});
       cache_discrete_plan.insert({valid_column_variables, discrete_plan});
     } else {
@@ -244,6 +287,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   std::cout << std::endl
             << "We have solved " << cache_discrete_plan.size()
             << " semi-discrete optimal transport problem." << std::endl;
+  reset_valid_colunm_variables();
   if (not start_loop) {
     if (n_iteration == 0) {
       std::cout << "Semi-discrete optimal transport solver is not working."
@@ -263,19 +307,21 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       if (n == 1) {
         std::cout << "We reach the solution with error " << error << "."
                   << std::endl;
+        update_partition();
+        print_info();
+        partition.gnuplot();
       } else {
         for (auto plan : plans) {
           double cost = 0;
           std::cout << "\b\b" << std::endl;
           discrete_plan = cache_discrete_plan[plan.first];
           potential = plan.second.first;
+          update_partition();
           for (int j = 1; j <= n_column_variables; j++) {
             cost += (potential[j] * marginal_coefficients.front() -
                      squared_norm[j]) *
                     discrete_plan[j];
           }
-          update_column_variables();
-          update_partition();
           error = plan.second.second;
           dump_debug(false);
           std::cout << "This linear programming has object value " << cost
@@ -288,6 +334,4 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       }
     }
   }
-  print_info();
-  partition.gnuplot();
 }

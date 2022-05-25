@@ -47,11 +47,6 @@ public:
 private:
   Regular_triangulation dual_rt;
   polygon cropped_shape;
-#ifdef USE_EXACT_KERNEL
-  std::map<vertex, polygon> cropped_cells;
-#else
-  std::unordered_map<vertex, polygon> cropped_cells;
-#endif
   void crop_algorithm();
 
 public:
@@ -68,6 +63,12 @@ public:
     }
     dual_rt = Regular_triangulation(wpoints.begin(), wpoints.end());
   }
+
+#ifdef USE_EXACT_KERNEL
+  std::map<vertex, polygon> cropped_cells;
+#else
+  std::unordered_map<vertex, polygon> cropped_cells;
+#endif
 
   PowerDiagram(Regular_triangulation &rt) { dual_rt = rt; };
 

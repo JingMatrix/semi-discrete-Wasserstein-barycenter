@@ -54,6 +54,7 @@ private:
     }
   }
   bool is_uniform_measure = true;
+  void update_potential();
 
   /* linear programming part */
   glp_prob *lp = glp_create_prob();
@@ -69,6 +70,7 @@ private:
   /* default discrete plan is the independent plan */
   std::vector<double> discrete_plan = {0};
   void update_discrete_plan();
+  void reset_valid_colunm_variables();
   bool lp_solve_called = false;
   void update_column_variables();
   bool check_discrete_barycenter_unique();

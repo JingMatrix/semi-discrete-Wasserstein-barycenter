@@ -1,6 +1,7 @@
 weight_points
 jacobian
 wired_data
+good_data
 lp_solution
 pd_lines
 pd_points
