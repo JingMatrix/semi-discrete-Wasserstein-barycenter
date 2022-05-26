@@ -42,6 +42,7 @@ add_library(
   src/marginals.cpp
   src/semi-discrete.cpp
   src/numerical-solver.cpp
+  src/update-data.cpp
   src/linear-programming.cpp
 )
 
