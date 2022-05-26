@@ -73,7 +73,6 @@ private:
   void reset_valid_colunm_variables();
   bool lp_solve_called = false;
   void update_column_variables();
-  bool check_discrete_barycenter_unique();
 
   /* Numerical solution */
   /* Semi discrete optimal transport solver */

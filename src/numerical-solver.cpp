@@ -164,7 +164,7 @@ void WassersteinBarycenter::update_potential() {
       }
     }
     potential[k] = squared_norm[k] - 2 * u_star;
-	/* sensitive test */
+    /* sensitive test */
     /* potential[k] += 0.001; */
   }
   double average = 0;
@@ -237,8 +237,6 @@ void WassersteinBarycenter::print_info() {
   }
 }
 
-bool WassersteinBarycenter::check_discrete_barycenter_unique() { return false; }
-
 void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   tolerance = e;
   initialize_lp();
@@ -267,7 +265,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
         plans.clear();
       }
     }
-    potential = std::vector<double>(n_column_variables + 1, -1);
+    potential = std::vector<double>(n_column_variables + 1, 0);
     n_iteration = semi_discrete(70);
     if (error < tolerance) {
       update_partition();
@@ -287,7 +285,6 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   std::cout << std::endl
             << "We have solved " << cache_discrete_plan.size()
             << " semi-discrete optimal transport problem." << std::endl;
-  reset_valid_colunm_variables();
   if (not start_loop) {
     if (n_iteration == 0) {
       std::cout << "Semi-discrete optimal transport solver is not working."
@@ -307,30 +304,102 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
       if (n == 1) {
         std::cout << "We reach the solution with error " << error << "."
                   << std::endl;
+        reset_valid_colunm_variables();
         update_partition();
         print_info();
         partition.gnuplot();
       } else {
+        std::list<std::vector<int>> lp_vertices;
         for (auto plan : plans) {
           double cost = 0;
           std::cout << "\b\b" << std::endl;
-          discrete_plan = cache_discrete_plan[plan.first];
+          valid_column_variables = plan.first;
+          discrete_plan = cache_discrete_plan[valid_column_variables];
+          lp_vertices.push_back(valid_column_variables);
           potential = plan.second.first;
+          error = plan.second.second;
           update_partition();
           for (int j = 1; j <= n_column_variables; j++) {
             cost += (potential[j] * marginal_coefficients.front() -
                      squared_norm[j]) *
                     discrete_plan[j];
           }
-          error = plan.second.second;
-          dump_debug(false);
+          print_info();
           std::cout << "This linear programming has object value " << cost
                     << "." << std::endl;
         }
-
-        std::cout << "Get an invalid solution loop of length " << n << "."
-                  << std::endl;
-        std::exit(EXIT_FAILURE);
+        if (n == 2) {
+          std::cout << std::endl;
+          std::cout << "Encounter lp vertices loop of length " << n
+                    << ", we try convex combination of them as solution."
+                    << std::endl;
+          auto psi_0 = plans[lp_vertices.back()].first;
+          auto p_0 = cache_discrete_plan[lp_vertices.back()];
+          auto psi_1 = plans[lp_vertices.front()].first;
+          auto p_1 = cache_discrete_plan[lp_vertices.front()];
+          double p_diff[n_column_variables + 1];
+          p_diff[0] = 0;
+          for (int j = 1; j <= n_column_variables; j++) {
+            p_diff[j] = p_1[j] - p_0[j];
+          }
+          double lambda = 0.5;
+          double lambda_l = 0;
+          double lambda_r = 1;
+          for (int i = 0; i < step; i++) {
+            std::cout << "Try combination coefficient lambda = " << lambda
+                      << "." << std::endl;
+            for (int j = 1; j <= n_column_variables; j++) {
+              discrete_plan[j] = p_1[j] * lambda + p_0[j] * (1 - lambda);
+            }
+            update_column_variables();
+            potential = std::vector<double>(n_column_variables + 1, 0);
+            n_iteration = semi_discrete(70);
+            if (error < tolerance) {
+              update_partition();
+              update_potential();
+              update_discrete_plan();
+              update_column_variables();
+            } else {
+              std::cout << "Fail to solve semi-discrete problem after "
+                        << n_iteration << " iterations with error " << error
+                        << " but current tolerance is " << tolerance << "."
+                        << std::endl;
+              dump_debug();
+            }
+            if (plans.contains(valid_column_variables)) {
+              double test = 0;
+              for (int j = 1; j <= n_column_variables; j++) {
+                test += potential[j] * p_diff[j];
+              }
+              std::cout << "Get test result: " << test << "." << std::endl;
+              if (std::abs(test) < tolerance) {
+                std::cout << "We get the non-vertex solution:" << std::endl;
+                for (int j = 1; j <= n_column_variables; j++) {
+                  discrete_plan[j] = p_1[j] * lambda + p_0[j] * (1 - lambda);
+                }
+                reset_valid_colunm_variables();
+                update_partition();
+                print_info();
+                partition.gnuplot();
+                break;
+              } else if (test > 0) {
+                lambda_r = lambda;
+                lambda = (lambda + lambda_l) / 2;
+              } else if (test < 0) {
+                lambda_l = lambda;
+                lambda = (lambda + lambda_r) / 2;
+              }
+            } else {
+              std::cout << "No possible saddle point with current loop."
+                        << std::endl;
+              dump_debug();
+            }
+          }
+        } else {
+          std::cout << "Current solution loop has length " << n
+                    << ", not handled yet.";
+          std::exit(EXIT_FAILURE);
+        }
       }
     }
   }
