@@ -42,8 +42,8 @@ void WassersteinBarycenter::update_partition() {
   {
     int n = partition.number_of_hidden_vertices();
     if (n > 0) {
-      std::cout << "Current partition has " << n << " hidden vertices."
-                << std::endl;
+      /* std::cout << "Current partition has " << n << " hidden vertices." */
+      /*           << std::endl; */
     }
   }
 
@@ -103,11 +103,6 @@ void WassersteinBarycenter::update_column_variables() {
       dumb_column_variables.insert(j);
     }
   }
-  std::cout << "Support of current discrete plan: (";
-  for (auto j : valid_column_variables) {
-    std::cout << j << ", ";
-  }
-  std::cout << "\b\b)" << std::endl;
 }
 
 void WassersteinBarycenter::extend_concave_potential(double shift) {
@@ -130,17 +125,17 @@ void WassersteinBarycenter::extend_concave_potential(double shift) {
     }
     potential[k] = squared_norm[k] - 2 * u_star + shift;
   }
-  /* if (dumb_column_variables.size() + n == n_column_variables) { */
-  /*   double average = 0; */
-  /*   potential[0] = 0; */
-  /*   for (auto p : potential) { */
-  /*     average += p; */
-  /*   } */
-  /*   average /= n_column_variables; */
-  /*   for (int i = 1; i <= n_column_variables; i++) { */
-  /*     potential[i] -= average; */
-  /*   } */
-  /* } */
+  if (dumb_column_variables.size() + n == n_column_variables) {
+    double average = 0;
+    potential[0] = 0;
+    for (auto p : potential) {
+      average += p;
+    }
+    average /= n_column_variables;
+    for (int i = 1; i <= n_column_variables; i++) {
+      potential[i] -= average;
+    }
+  }
 }
 
 void WassersteinBarycenter::reset_valid_colunm_variables() {

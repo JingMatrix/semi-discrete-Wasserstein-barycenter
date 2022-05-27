@@ -73,13 +73,41 @@ private:
   void reset_valid_colunm_variables();
   bool lp_solve_called = false;
   void update_column_variables();
+  void print_plan_support() {
+    std::cout << "(";
+    for (auto j : valid_column_variables) {
+      std::cout << j << ", ";
+    }
+    std::cout << "\b\b)";
+  }
 
   /* Numerical solution */
   /* Semi discrete optimal transport solver */
-  int semi_discrete(int step);
-  gsl_multiroot_fdfsolver *semi_discrete_solver;
+  int semi_discrete_iteration(int step);
+  gsl_multiroot_fdfsolver *semi_discrete_newton;
   void dump_semi_discrete_solver();
   void print_info();
+  struct semi_discrete_sol {
+    std::vector<double> discrete_plan;
+    std::vector<double> potential;
+    double error;
+  };
+  std::map<std::vector<int>, semi_discrete_sol> cached_semi_discrete_solution;
+  void semi_discrete_solver(int step) {
+    if (cached_semi_discrete_solution.contains(valid_column_variables)) {
+      potential =
+          cached_semi_discrete_solution[valid_column_variables].potential;
+    } else {
+      potential = std::vector<double>(n_column_variables + 1, 0);
+      semi_discrete_iteration(step);
+      extend_concave_potential();
+      std::cout << "Cache lp vertex: ";
+      print_plan_support();
+      std::cout << "." << std::endl;
+      cached_semi_discrete_solution.insert(
+          {valid_column_variables, {discrete_plan, potential, error}});
+    }
+  }
 
 public:
   PowerDiagram partition;
@@ -91,7 +119,7 @@ public:
                         std::list<double> marginal_coefficients = {});
   static std::list<double> get_marginal_coefficients(int argc, char *argv[]);
 
-  void iteration_solver(unsigned int step, double tolerance = 10e-5);
+  void saddle_point_iteration(unsigned int step, double tolerance = 10e-5);
 
   std::vector<std::vector<int>> column_variables{{0}};
   std::vector<int> valid_column_variables;
@@ -109,6 +137,6 @@ public:
 
   ~WassersteinBarycenter() {
     glp_delete_prob(lp);
-    gsl_multiroot_fdfsolver_free(semi_discrete_solver);
+    gsl_multiroot_fdfsolver_free(semi_discrete_newton);
   }
 };

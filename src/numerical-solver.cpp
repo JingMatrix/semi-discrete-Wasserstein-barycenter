@@ -58,8 +58,7 @@ void WassersteinBarycenter::print_info() {
   partition.use_lable = true;
   partition.label.clear();
 
-  std::cout << std::endl
-            << "Index\tProbability\tPotential\tGradient\t     Point"
+  std::cout << "Index\tProbability\tPotential\tGradient\t     Point"
             << std::endl;
   for (auto v : vertices) {
     int j = std::distance(
@@ -92,44 +91,36 @@ void WassersteinBarycenter::print_info() {
   }
 }
 
-void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
+void WassersteinBarycenter::saddle_point_iteration(unsigned int step,
+                                                   double e) {
   tolerance = e;
   initialize_lp();
   std::cout << std::endl;
+
   potential = std::vector<double>(n_column_variables + 1);
   gradient = std::vector<double>(n_column_variables + 1);
   int n_iteration = 0;
-  std::map<std::vector<int>, std::pair<std::vector<double>, double>> psi_loop{};
-  std::map<std::vector<int>, std::pair<std::vector<double>, double>>
-      cache_solution{};
-  std::map<std::vector<int>, std::vector<double>> cache_discrete_plan{};
   bool start_loop = false;
   bool encounter_loop = false;
+  std::set<std::vector<int>> lp_vertices_loop{};
   for (int i = 0; i < step; i++) {
     update_discrete_plan();
     update_column_variables();
-    if (start_loop && psi_loop.contains(valid_column_variables)) {
+    if (start_loop && lp_vertices_loop.contains(valid_column_variables)) {
       encounter_loop = true;
       break;
     }
-    if (cache_discrete_plan.contains(valid_column_variables)) {
-      potential = cache_solution[valid_column_variables].first;
+    if (cached_semi_discrete_solution.contains(valid_column_variables)) {
       if (not start_loop) {
         start_loop = true;
       }
-      psi_loop.insert(
-          {valid_column_variables, cache_solution[valid_column_variables]});
-    } else {
-      potential = std::vector<double>(n_column_variables + 1, 0);
-      n_iteration = semi_discrete(step);
-      extend_concave_potential();
-      cache_solution.insert({valid_column_variables, {potential, error}});
-      cache_discrete_plan.insert({valid_column_variables, discrete_plan});
+      lp_vertices_loop.insert({valid_column_variables});
     }
+    semi_discrete_solver(step);
   }
-  std::cout << std::endl
-            << "We have solved " << cache_discrete_plan.size()
-            << " semi-discrete optimal transport problem." << std::endl;
+
+  std::cout << std::endl;
+  const int n_initial_cached_vertices = cached_semi_discrete_solution.size();
   if (not start_loop) {
     std::cout << "Finish the program after required " << step
               << " iterations, the barycenter is not found yet." << std::endl;
@@ -139,22 +130,21 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
           << "Should increase the iteration steps to analyze a possible loop."
           << std::endl;
     } else {
-      int n = psi_loop.size();
+      int n = lp_vertices_loop.size();
       if (n == 1) {
         std::cout << "We reach the solution with error " << error << "."
                   << std::endl;
         print_info();
         partition.gnuplot();
       } else {
-        std::list<std::vector<int>> lp_vertices;
-        for (auto psi : psi_loop) {
+        std::cout << "Print lp vertices loop data:" << std::endl;
+        for (auto v : lp_vertices_loop) {
+          std::cout << std::endl;
           double cost = 0;
-          std::cout << "\b\b" << std::endl;
-          valid_column_variables = psi.first;
-          discrete_plan = cache_discrete_plan[valid_column_variables];
-          lp_vertices.push_back(valid_column_variables);
-          potential = psi.second.first;
-          error = psi.second.second;
+          valid_column_variables = v;
+          discrete_plan = cached_semi_discrete_solution[v].discrete_plan;
+          potential = cached_semi_discrete_solution[v].potential;
+          error = cached_semi_discrete_solution[v].error;
           for (int j = 1; j <= n_column_variables; j++) {
             cost += (potential[j] * marginal_coefficients.front() -
                      squared_norm[j]) *
@@ -170,10 +160,11 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
           std::cout << "Encounter lp vertices loop of length " << n
                     << ", we try convex combination of them as solution."
                     << std::endl;
-          auto psi_0 = psi_loop[lp_vertices.back()].first;
-          auto p_0 = cache_discrete_plan[lp_vertices.back()];
-          auto psi_1 = psi_loop[lp_vertices.front()].first;
-          auto p_1 = cache_discrete_plan[lp_vertices.front()];
+          auto lp_iterator = lp_vertices_loop.begin();
+          auto p_0 =
+              cached_semi_discrete_solution[*(lp_iterator++)].discrete_plan;
+          auto p_1 =
+              cached_semi_discrete_solution[*(lp_iterator++)].discrete_plan;
           double p_diff[n_column_variables + 1];
           std::vector<double> convex_combination_plan;
           p_diff[0] = 0;
@@ -194,7 +185,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
             convex_combination_plan = discrete_plan;
             update_column_variables();
             potential = std::vector<double>(n_column_variables + 1, 0);
-            semi_discrete(step);
+            semi_discrete_iteration(step);
             extend_concave_potential();
             double test = 0;
             for (int j = 1; j <= n_column_variables; j++) {
@@ -210,7 +201,7 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
             }
             update_discrete_plan();
             update_column_variables();
-            if (psi_loop.contains(valid_column_variables)) {
+            if (lp_vertices_loop.contains(valid_column_variables)) {
               if (std::abs(test) < tolerance) {
                 std::cout << "We get the non-vertex solution:" << std::endl;
                 discrete_plan = convex_combination_plan;
@@ -219,30 +210,32 @@ void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
                 break;
               }
             } else {
-              std::cout << "Current plan is not in the loop, ";
-              if (cache_discrete_plan.contains(valid_column_variables)) {
-                std::cout << "it was cached before, not hnadled yet."
+              std::cout << "Get a vertex not in the loop. ";
+              if (cached_semi_discrete_solution.contains(
+                      valid_column_variables)) {
+                print_plan_support();
+                std::cout << " was cached before, no idea of saddle points."
+                          << std::endl;
+                std::cout << "Initially, we have solved "
+                          << n_initial_cached_vertices
+                          << " semi-discrete optimal transport problem to get "
+                             "the loop."
                           << std::endl;
                 std::exit(EXIT_FAILURE);
               } else {
-                std::cout << "nor is it in the cached plan list." << std::endl;
-                while (
-                    not cache_discrete_plan.contains(valid_column_variables)) {
-                  cache_solution.insert(
-                      {valid_column_variables, {potential, error}});
-                  cache_discrete_plan.insert(
-                      {valid_column_variables, discrete_plan});
-                  std::cout << "Cache current plan." << std::endl;
-                  potential = std::vector<double>(n_column_variables + 1, 0);
-                  n_iteration = semi_discrete(step);
-                  extend_concave_potential();
+                std::cout << "And it is not in the cached plan list."
+                          << std::endl;
+                std::cout << std::endl;
+                while (not cached_semi_discrete_solution.contains(
+                    valid_column_variables)) {
+                  semi_discrete_solver(step);
                   print_info();
                   update_discrete_plan();
                   std::cout << std::endl;
                   update_column_variables();
                 }
-                std::cout << "Current plan was cached. ";
-                if (psi_loop.contains(valid_column_variables)) {
+                std::cout << "Next vertex is cached. ";
+                if (lp_vertices_loop.contains(valid_column_variables)) {
                   std::cout << "We get back to the loop." << std::endl;
                 } else {
                   std::cout << "We will finally return back to the loop."

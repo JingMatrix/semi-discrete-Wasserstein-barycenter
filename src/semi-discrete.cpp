@@ -149,7 +149,7 @@ int composite_fdf(const gsl_vector *x, void *p, gsl_vector *f, gsl_matrix *df) {
   }
 }
 
-int WassersteinBarycenter::semi_discrete(int steps) {
+int WassersteinBarycenter::semi_discrete_iteration(int steps) {
 
   /* We only deal with uniform measure for now */
   if (valid_column_variables.size() < 2 || not is_uniform_measure) {
@@ -185,25 +185,25 @@ int WassersteinBarycenter::semi_discrete(int steps) {
   }
 
   const gsl_multiroot_fdfsolver_type *T = gsl_multiroot_fdfsolver_newton;
-  semi_discrete_solver = gsl_multiroot_fdfsolver_alloc(T, FDF.n);
-  gsl_multiroot_fdfsolver_set(semi_discrete_solver, &FDF, x);
+  semi_discrete_newton = gsl_multiroot_fdfsolver_alloc(T, FDF.n);
+  gsl_multiroot_fdfsolver_set(semi_discrete_newton, &FDF, x);
 
   const auto backup_dumb_vars = dumb_column_variables;
   int status = 0;
   int iter = 0;
   do {
     iter++;
-    status = gsl_multiroot_fdfsolver_iterate(semi_discrete_solver);
+    status = gsl_multiroot_fdfsolver_iterate(semi_discrete_newton);
 
     if (status == GSL_EBADFUNC) {
-      std::cout << "The iteration encountered a singular point where the "
-                   "function or its derivative evaluated to Inf or NaN."
-                << std::endl;
+      /* std::cout << "The iteration encountered a singular point where the " */
+      /*              "function or its derivative evaluated to Inf or NaN." */
+      /*           << std::endl; */
     }
 
     if (index_out_of_support.size() > 0) {
-      std::cout << "Manually adjust semi-discrete solver for turn " << iter
-                << std::endl;
+      /* std::cout << "Manually adjust semi-discrete solver for turn " << iter */
+      /*           << std::endl; */
       const auto backup_vars = valid_column_variables;
       dumb_column_variables.clear();
       valid_column_variables.clear();
@@ -218,22 +218,22 @@ int WassersteinBarycenter::semi_discrete(int steps) {
 
       extend_concave_potential();
 
-      std::cout << "index\tnewton x\tprobability\tnewton dx\tadjusted x"
-                << std::endl;
+      /* std::cout << "index\tnewton x\tprobability\tnewton dx\tadjusted x" */
+      /*           << std::endl; */
       for (auto i : index_out_of_support) {
         const int j = backup_vars[i];
-        const double dx = gsl_vector_get(semi_discrete_solver->dx, i);
+        const double dx = gsl_vector_get(semi_discrete_newton->dx, i);
         // Maybe need a better addjsutment
         double adjust = potential[j] + 0.001;
-        std::printf("%i\t%.6f\t%.6f\t%.6f\t%.6f\n", j,
-                    gsl_vector_get(semi_discrete_solver->x, i) - dx,
-                    discrete_plan[j], dx, adjust);
-        gsl_vector_set(semi_discrete_solver->x, i, adjust);
+        /* std::printf("%i\t%.6f\t%.6f\t%.6f\t%.6f\n", j, */
+        /*             gsl_vector_get(semi_discrete_solver->x, i) - dx, */
+        /*             discrete_plan[j], dx, adjust); */
+        gsl_vector_set(semi_discrete_newton->x, i, adjust);
       }
 
       valid_column_variables = backup_vars;
-      composite_fdf(semi_discrete_solver->x, this, semi_discrete_solver->f,
-                    semi_discrete_solver->J);
+      composite_fdf(semi_discrete_newton->x, this, semi_discrete_newton->f,
+                    semi_discrete_newton->J);
     }
 
     if (status == GSL_ENOPROG) {
@@ -244,7 +244,7 @@ int WassersteinBarycenter::semi_discrete(int steps) {
     }
 
     status =
-        gsl_multiroot_test_residual(semi_discrete_solver->f, 0.1 * tolerance);
+        gsl_multiroot_test_residual(semi_discrete_newton->f, 0.1 * tolerance);
   } while (status == GSL_CONTINUE && iter < steps);
 
   error = 0;
