@@ -14,7 +14,7 @@ private:
   std::vector<discrete_dist> marginals;
   int n_marginals;
   PowerDiagram::vertex_with_data cell_area;
-  std::vector<PowerDiagram::vertex> vertices;
+  std::vector<PowerDiagram::vertex> partition_vertices;
   void read_marginals_data(const char *filename, std::list<double> coefs);
   std::list<double> marginal_coefficients;
   void set_marginal_coefficients(std::list<double> coefs) {
@@ -54,7 +54,7 @@ private:
     }
   }
   bool is_uniform_measure = true;
-  void extend_concave_potential(double shift = 0);
+  void extend_concave_potential();
 
   /* linear programming part */
   glp_prob *lp = glp_create_prob();
@@ -86,7 +86,6 @@ private:
   int semi_discrete_iteration(int step);
   gsl_multiroot_fdfsolver *semi_discrete_newton;
   void dump_semi_discrete_solver();
-  void print_info();
   struct semi_discrete_sol {
     std::vector<double> discrete_plan;
     std::vector<double> potential;
@@ -111,6 +110,7 @@ private:
 
 public:
   PowerDiagram partition;
+  void print_info();
   WassersteinBarycenter(PowerDiagram::polygon support_polygon,
                         const char *filename = "data/marginals",
                         std::list<double> marginal_coefficients = {});
@@ -128,8 +128,7 @@ public:
   std::vector<K::Point_2> support_points{K::Point_2(0, 0)};
   std::vector<double> potential;
   std::vector<double> gradient;
-  std::set<int> index_out_of_support;
-  void update_partition();
+  void update_partition_and_gradient();
   double tolerance;
   double error = std::numeric_limits<double>::max();
 

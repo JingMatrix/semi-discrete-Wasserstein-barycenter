@@ -16,19 +16,15 @@ int set_potential(WassersteinBarycenter *barycenter_problem,
   const std::vector<int> &variables =
       barycenter_problem->valid_column_variables;
   const int n_variables = variables.size();
-  double sum = 0;
   for (int i = 0; i < n_variables - 1; i++) {
     double p = gsl_vector_get(x, i);
-    sum += p;
-    if (gsl_isnan(p) != 1) {
+    if (gsl_isnan(p) != 1 && std::abs(p) < 10e6) {
       barycenter_problem->potential[variables[i]] = p;
     } else {
-      std::cerr << "GSL is trying NaN as a gusess for variable " << variables[i]
-                << ", stop here." << std::endl;
       return GSL_FAILURE;
     }
   }
-  barycenter_problem->update_partition();
+  barycenter_problem->update_partition_and_gradient();
   return GSL_SUCCESS;
 }
 
@@ -76,21 +72,12 @@ int get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
     }
     gsl_matrix_set(df, i, i, -sum);
     if (sum == 0) {
-      /* std::cout << "The column varible " << variables[i] */
-      /*           << " is pushed outside of current support." << std::endl; */
       has_vertex_out_of_support = true;
-      if (i == n_variables - 1) {
-        std::cout << "This column variable " << variables[i] << " is not free."
-                  << std::endl;
-      } else {
-        barycenter_problem->index_out_of_support.insert(i);
-      }
     }
   }
   if (has_vertex_out_of_support) {
     return GSL_FAILURE;
   } else {
-    barycenter_problem->index_out_of_support.clear();
     return GSL_SUCCESS;
   }
 }
@@ -166,12 +153,12 @@ int WassersteinBarycenter::semi_discrete_iteration(int steps) {
   FDF.params = this;
   gsl_vector *x = gsl_vector_alloc(FDF.n);
   int index_of_maximun_proba = FDF.n;
-  for (int i = 0; i <= FDF.n; i++) {
-    if (discrete_plan[valid_column_variables[i]] >
-        discrete_plan[valid_column_variables[index_of_maximun_proba]]) {
-      index_of_maximun_proba = i;
-    }
-  }
+
+  const auto backup_vars = valid_column_variables;
+  const auto backup_dumb_vars = dumb_column_variables;
+  std::sort(
+      valid_column_variables.begin(), valid_column_variables.end(),
+      [this](int a, int b) { return discrete_plan[a] < discrete_plan[b]; });
 
   if (index_of_maximun_proba < FDF.n) {
     int tmp = valid_column_variables[index_of_maximun_proba];
@@ -188,7 +175,6 @@ int WassersteinBarycenter::semi_discrete_iteration(int steps) {
   semi_discrete_newton = gsl_multiroot_fdfsolver_alloc(T, FDF.n);
   gsl_multiroot_fdfsolver_set(semi_discrete_newton, &FDF, x);
 
-  const auto backup_dumb_vars = dumb_column_variables;
   int status = 0;
   int iter = 0;
   do {
@@ -199,41 +185,28 @@ int WassersteinBarycenter::semi_discrete_iteration(int steps) {
       /* std::cout << "The iteration encountered a singular point where the " */
       /*              "function or its derivative evaluated to Inf or NaN." */
       /*           << std::endl; */
-    }
 
-    if (index_out_of_support.size() > 0) {
-      /* std::cout << "Manually adjust semi-discrete solver for turn " << iter */
-      /*           << std::endl; */
-      const auto backup_vars = valid_column_variables;
-      dumb_column_variables.clear();
-      valid_column_variables.clear();
-      for (auto i : index_out_of_support) {
-        dumb_column_variables.insert(backup_vars[i]);
-      }
-      for (auto j : backup_vars) {
-        if (not dumb_column_variables.contains(j)) {
-          valid_column_variables.push_back(j);
+      double fraction = 1;
+      while (partition.cropped_cells.size() < FDF.n + 1) {
+        fraction /= 2;
+        for (int i = 0; i < FDF.n; i++) {
+          potential[valid_column_variables[i]] -=
+              fraction * gsl_vector_get(semi_discrete_newton->dx, i);
         }
+        update_partition_and_gradient();
       }
 
-      extend_concave_potential();
-
-      /* std::cout << "index\tnewton x\tprobability\tnewton dx\tadjusted x" */
-      /*           << std::endl; */
-      for (auto i : index_out_of_support) {
-        const int j = backup_vars[i];
-        const double dx = gsl_vector_get(semi_discrete_newton->dx, i);
-        // Maybe need a better addjsutment
-        double adjust = potential[j] + 0.001;
-        /* std::printf("%i\t%.6f\t%.6f\t%.6f\t%.6f\n", j, */
-        /*             gsl_vector_get(semi_discrete_solver->x, i) - dx, */
-        /*             discrete_plan[j], dx, adjust); */
-        gsl_vector_set(semi_discrete_newton->x, i, adjust);
+      for (int i = 0; i < FDF.n; i++) {
+        gsl_vector_set(semi_discrete_newton->x, i,
+                       potential[valid_column_variables[i]]);
       }
-
-      valid_column_variables = backup_vars;
-      composite_fdf(semi_discrete_newton->x, this, semi_discrete_newton->f,
-                    semi_discrete_newton->J);
+      get_gradient(this, semi_discrete_newton->f);
+      int adjust_state = get_jacobian_uniform_measure_lower_dimension(
+          this, semi_discrete_newton->J);
+      if (adjust_state == GSL_FAILURE) {
+        std::cout << "Manual adjustment failed." << std::endl;
+        dump_debug();
+      }
     }
 
     if (status == GSL_ENOPROG) {
@@ -259,19 +232,11 @@ int WassersteinBarycenter::semi_discrete_iteration(int steps) {
     std::cout << "Fail to solve a semi-discrete problem within required "
                  "error after "
               << iter << " iterations with error " << error << "." << std::endl;
-    std::exit(EXIT_FAILURE);
+    dump_debug();
   }
 
-  if (index_of_maximun_proba < FDF.n) {
-    int tmp = valid_column_variables[index_of_maximun_proba];
-    valid_column_variables[index_of_maximun_proba] =
-        valid_column_variables[FDF.n];
-    valid_column_variables[FDF.n] = tmp;
-  }
+  valid_column_variables = backup_vars;
   dumb_column_variables = backup_dumb_vars;
-
-  /* std::cout << "Semi-discrete solver finished after " << iter << " iterations." */
-  /*           << std::endl; */
   return iter;
 }
 

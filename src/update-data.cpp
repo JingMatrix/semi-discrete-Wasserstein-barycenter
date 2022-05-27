@@ -1,6 +1,6 @@
 #include <barycenter.hpp>
 
-void WassersteinBarycenter::update_partition() {
+void WassersteinBarycenter::update_partition_and_gradient() {
   if (valid_column_variables.size() == 0) {
     std::cout << "Currently no valid column variables. Exit." << std::endl;
     std::exit(EXIT_SUCCESS);
@@ -29,16 +29,16 @@ void WassersteinBarycenter::update_partition() {
     std::exit(EXIT_FAILURE);
   }
 
-  vertices.clear();
+  partition_vertices.clear();
 
-  double partition_area = 0;
+  double partition_area_sum = 0;
 
   for (int j : valid_column_variables) {
-    vertices.push_back(PowerDiagram::vertex{support_points[j], potential[j]});
+    partition_vertices.push_back(PowerDiagram::vertex{support_points[j], potential[j]});
   }
-  partition = PowerDiagram(vertices.begin(), vertices.end());
+  partition = PowerDiagram(partition_vertices.begin(), partition_vertices.end());
   initialize_support();
-  auto cell_area = partition.area();
+  auto cell_areas = partition.area();
   {
     int n = partition.number_of_hidden_vertices();
     if (n > 0) {
@@ -49,18 +49,33 @@ void WassersteinBarycenter::update_partition() {
 
   int i = 0;
   for (int j : valid_column_variables) {
-    auto v = vertices[i];
+    auto v = partition_vertices[i];
     i++;
-    double a = cell_area[v];
+    double a = cell_areas[v];
     gradient[j] = discrete_plan[j] - a;
-    partition_area += a;
+    partition_area_sum += a;
   }
 
-  if (std::abs(partition_area - support_area) > 10e-6) {
-    std::cerr << "Current support area is " << support_area
-              << ", but partition area is " << partition_area << "."
-              << std::endl;
-    dump_debug();
+  if (std::abs(partition_area_sum - support_area) > 10e-6) {
+    if (partition_area_sum == 0) {
+      int max_potential_index = 0;
+      const int n = valid_column_variables.size();
+      for (int i = 0; i < n; i++) {
+        if (potential[valid_column_variables[i]] >
+            potential[valid_column_variables[max_potential_index]]) {
+          max_potential_index = i;
+        }
+      }
+      std::cout << "The support is inside the cell of index "
+                << valid_column_variables[max_potential_index] << "."
+                << std::endl;
+      print_info();
+    } else {
+      std::cerr << "Current support area is " << support_area
+                << ", but partition area is " << partition_area_sum << "."
+                << std::endl;
+      dump_debug();
+    }
   }
 }
 
@@ -105,14 +120,14 @@ void WassersteinBarycenter::update_column_variables() {
   }
 }
 
-void WassersteinBarycenter::extend_concave_potential(double shift) {
-  update_partition();
-  const int n = valid_column_variables.size();
+void WassersteinBarycenter::extend_concave_potential() {
+  update_partition_and_gradient();
+  int n_vertices = valid_column_variables.size();
   for (auto k : dumb_column_variables) {
     double u_star = -10e5;
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n_vertices; i++) {
       const int j = valid_column_variables[i];
-      const auto cell = partition.cropped_cells[vertices[i]];
+      const auto cell = partition.cropped_cells[partition_vertices[i]];
       const double u_star_defined = 0.5 * (squared_norm[j] - potential[j]);
       for (auto p : cell.vertices()) {
         double comp = K::Vector_2(K::Point_2(0, 0), p) *
@@ -123,18 +138,17 @@ void WassersteinBarycenter::extend_concave_potential(double shift) {
         }
       }
     }
-    potential[k] = squared_norm[k] - 2 * u_star + shift;
+    potential[k] = squared_norm[k] - 2 * u_star;
   }
-  if (dumb_column_variables.size() + n == n_column_variables) {
-    double average = 0;
-    potential[0] = 0;
-    for (auto p : potential) {
-      average += p;
-    }
-    average /= n_column_variables;
-    for (int i = 1; i <= n_column_variables; i++) {
-      potential[i] -= average;
-    }
+
+  double average = 0;
+  potential[0] = 0;
+  for (auto p : potential) {
+    average += p;
+  }
+  average /= n_column_variables;
+  for (int i = 1; i <= n_column_variables; i++) {
+    potential[i] -= average;
   }
 }
 

@@ -5,7 +5,7 @@ void WassersteinBarycenter::dump_debug(bool exit_after_dump_debug) {
   std::cout << "Vertices to insert are written to file data/weight_points."
             << std::endl;
   std::ofstream point("data/weight_points");
-  for (auto v : vertices) {
+  for (auto v : partition_vertices) {
     point << v << " " << cell_area[v] << std::endl;
   }
   print_info();
@@ -52,7 +52,7 @@ void WassersteinBarycenter::print_info() {
   }
 
   if (gradient.size() != n_column_variables + 1) {
-    update_partition();
+    update_partition_and_gradient();
   }
 
   partition.use_lable = true;
@@ -60,7 +60,7 @@ void WassersteinBarycenter::print_info() {
 
   std::cout << "Index\tProbability\tPotential\tGradient\t     Point"
             << std::endl;
-  for (auto v : vertices) {
+  for (auto v : partition_vertices) {
     int j = std::distance(
         support_points.begin(),
         std::find(support_points.begin(), support_points.end(), v.point()));
@@ -150,7 +150,7 @@ void WassersteinBarycenter::saddle_point_iteration(unsigned int step,
                      squared_norm[j]) *
                     discrete_plan[j];
           }
-          update_partition();
+          update_partition_and_gradient();
           print_info();
           std::cout << "This linear programming has object value " << cost
                     << " with error " << error << "." << std::endl;
@@ -191,7 +191,8 @@ void WassersteinBarycenter::saddle_point_iteration(unsigned int step,
             for (int j = 1; j <= n_column_variables; j++) {
               test += potential[j] * p_diff[j];
             }
-            std::cout << "Get test result: " << test << "." << std::endl;
+            std::cout << "Test potential with loop vertices: " << test << "."
+                      << std::endl;
             if (test > 0) {
               lambda_r = lambda;
               lambda = (lambda + lambda_l) / 2;
