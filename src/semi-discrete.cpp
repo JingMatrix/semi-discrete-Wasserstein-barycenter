@@ -76,11 +76,12 @@ int get_jacobian_uniform_measure(WassersteinBarycenter *barycenter_problem,
     }
     gsl_matrix_set(df, i, i, -sum);
     if (sum == 0) {
-      std::cout << "The column varible " << variables[i]
-                << " is pushed outside of current support." << std::endl;
+      /* std::cout << "The column varible " << variables[i] */
+      /*           << " is pushed outside of current support." << std::endl; */
       has_vertex_out_of_support = true;
       if (i == n_variables - 1) {
-        std::cout << "This column variable is not free." << std::endl;
+        std::cout << "This column variable " << variables[i] << " is not free."
+                  << std::endl;
       } else {
         barycenter_problem->index_out_of_support.insert(i);
       }
@@ -171,6 +172,7 @@ int WassersteinBarycenter::semi_discrete(int steps) {
       index_of_maximun_proba = i;
     }
   }
+
   if (index_of_maximun_proba < FDF.n) {
     int tmp = valid_column_variables[index_of_maximun_proba];
     valid_column_variables[index_of_maximun_proba] =
@@ -186,9 +188,11 @@ int WassersteinBarycenter::semi_discrete(int steps) {
   semi_discrete_solver = gsl_multiroot_fdfsolver_alloc(T, FDF.n);
   gsl_multiroot_fdfsolver_set(semi_discrete_solver, &FDF, x);
 
+  const auto backup_dumb_vars = dumb_column_variables;
   int status = 0;
   int iter = 0;
   do {
+    iter++;
     status = gsl_multiroot_fdfsolver_iterate(semi_discrete_solver);
 
     if (status == GSL_EBADFUNC) {
@@ -198,34 +202,39 @@ int WassersteinBarycenter::semi_discrete(int steps) {
     }
 
     if (index_out_of_support.size() > 0) {
-      double max = gsl_vector_max(semi_discrete_solver->x);
-      double sum = 0;
-      for (int i : index_out_of_support) {
-        sum += gsl_vector_get(semi_discrete_solver->dx, i);
-      }
-      std::cout << "We fix the following data that will cause problem:"
+      std::cout << "Manually adjust semi-discrete solver for turn " << iter
                 << std::endl;
-      std::cout << "Index\tx\t\tdx\t\tnew dx" << std::endl;
-      for (int i : index_out_of_support) {
-        double step = gsl_vector_get(semi_discrete_solver->dx, i);
-        std::cout << valid_column_variables[i]
-                  << "\t" << gsl_vector_get(semi_discrete_solver->x, i)
-                  << "\t" << step;
-        gsl_vector_set(
-            semi_discrete_solver->dx, i,
-            step * (max - gsl_vector_get(semi_discrete_solver->x, i)) / sum);
-        step = gsl_vector_get(semi_discrete_solver->dx, i);
-        std::cout << valid_column_variables[i] << "\t" << step << std::endl;
+      const auto backup_vars = valid_column_variables;
+      dumb_column_variables.clear();
+      valid_column_variables.clear();
+      for (auto i : index_out_of_support) {
+        dumb_column_variables.insert(backup_vars[i]);
       }
-      index_out_of_support.clear();
-    }
+      for (auto j : backup_vars) {
+        if (not dumb_column_variables.contains(j)) {
+          valid_column_variables.push_back(j);
+        }
+      }
 
-    /* { */
-    /* std::cout << "Encounter sigularity not handled in the " << iter */
-    /* << " iteration, dump data for analysis." << std::endl; */
-    /* dump_debug(); */
-    /* break; */
-    /* } */
+      extend_concave_potential();
+
+      std::cout << "index\tnewton x\tprobability\tnewton dx\tadjusted x"
+                << std::endl;
+      for (auto i : index_out_of_support) {
+        const int j = backup_vars[i];
+        const double dx = gsl_vector_get(semi_discrete_solver->dx, i);
+        // Maybe need a better addjsutment
+        double adjust = potential[j] + 0.001;
+        std::printf("%i\t%.6f\t%.6f\t%.6f\t%.6f\n", j,
+                    gsl_vector_get(semi_discrete_solver->x, i) - dx,
+                    discrete_plan[j], dx, adjust);
+        gsl_vector_set(semi_discrete_solver->x, i, adjust);
+      }
+
+      valid_column_variables = backup_vars;
+      composite_fdf(semi_discrete_solver->x, this, semi_discrete_solver->f,
+                    semi_discrete_solver->J);
+    }
 
     if (status == GSL_ENOPROG) {
       std::cout << "The iteration is not making any progress, preventing the "
@@ -234,9 +243,24 @@ int WassersteinBarycenter::semi_discrete(int steps) {
       break;
     }
 
-    status = gsl_multiroot_test_residual(semi_discrete_solver->f, tolerance);
-    iter++;
+    status =
+        gsl_multiroot_test_residual(semi_discrete_solver->f, 0.1 * tolerance);
   } while (status == GSL_CONTINUE && iter < steps);
+
+  error = 0;
+  for (int i = 0; i < FDF.n + 1; i++) {
+    double p = potential[valid_column_variables[i]];
+    error += std::abs(gradient[valid_column_variables[i]]);
+  }
+
+  gsl_vector_free(x);
+
+  if (iter == steps) {
+    std::cout << "Fail to solve a semi-discrete problem within required "
+                 "error after "
+              << iter << " iterations with error " << error << "." << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
 
   if (index_of_maximun_proba < FDF.n) {
     int tmp = valid_column_variables[index_of_maximun_proba];
@@ -244,28 +268,14 @@ int WassersteinBarycenter::semi_discrete(int steps) {
         valid_column_variables[FDF.n];
     valid_column_variables[FDF.n] = tmp;
   }
+  dumb_column_variables = backup_dumb_vars;
 
-  double min = potential[valid_column_variables.front()];
-  error = 0;
-  for (int i = 0; i < FDF.n + 1; i++) {
-    double p = potential[valid_column_variables[i]];
-    if (p < min) {
-      min = p;
-    }
-    error += std::pow(gradient[valid_column_variables[i]], 2);
-  }
-
-  for (int i = 0; i < FDF.n + 1; i++) {
-    potential[valid_column_variables[i]] -= min;
-  }
-
-  gsl_vector_free(x);
-
+  /* std::cout << "Semi-discrete solver finished after " << iter << " iterations." */
+  /*           << std::endl; */
   return iter;
 }
 
 void WassersteinBarycenter::dump_semi_discrete_solver() {
-  /* gsl_matrix *df = semi_discrete_solver->df; */
   const int n = valid_column_variables.size();
   gsl_matrix *jacobian = gsl_matrix_alloc(n, n);
   std::ofstream file("data/jacobian");

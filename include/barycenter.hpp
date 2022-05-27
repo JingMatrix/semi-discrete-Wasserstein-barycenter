@@ -54,7 +54,7 @@ private:
     }
   }
   bool is_uniform_measure = true;
-  void update_potential();
+  void extend_concave_potential(double shift = 0);
 
   /* linear programming part */
   glp_prob *lp = glp_create_prob();

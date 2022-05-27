@@ -103,9 +103,15 @@ void WassersteinBarycenter::update_column_variables() {
       dumb_column_variables.insert(j);
     }
   }
+  std::cout << "Support of current discrete plan: (";
+  for (auto j : valid_column_variables) {
+    std::cout << j << ", ";
+  }
+  std::cout << "\b\b)" << std::endl;
 }
 
-void WassersteinBarycenter::update_potential() {
+void WassersteinBarycenter::extend_concave_potential(double shift) {
+  update_partition();
   const int n = valid_column_variables.size();
   for (auto k : dumb_column_variables) {
     double u_star = -10e5;
@@ -122,19 +128,19 @@ void WassersteinBarycenter::update_potential() {
         }
       }
     }
-    potential[k] = squared_norm[k] - 2 * u_star;
-    /* sensitive test */
-    /* potential[k] += 0.001; */
+    potential[k] = squared_norm[k] - 2 * u_star + shift;
   }
-  double average = 0;
-  potential[0] = 0;
-  for (auto p : potential) {
-    average += p;
-  }
-  average /= n_column_variables;
-  for (int i = 1; i <= n_column_variables; i++) {
-    potential[i] -= average;
-  }
+  /* if (dumb_column_variables.size() + n == n_column_variables) { */
+  /*   double average = 0; */
+  /*   potential[0] = 0; */
+  /*   for (auto p : potential) { */
+  /*     average += p; */
+  /*   } */
+  /*   average /= n_column_variables; */
+  /*   for (int i = 1; i <= n_column_variables; i++) { */
+  /*     potential[i] -= average; */
+  /*   } */
+  /* } */
 }
 
 void WassersteinBarycenter::reset_valid_colunm_variables() {

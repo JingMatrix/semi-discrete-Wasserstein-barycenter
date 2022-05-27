@@ -87,7 +87,7 @@ void WassersteinBarycenter::print_info() {
     }
   } else {
     std::cout << "All " << n_column_variables
-              << " column varibales are considered in current calculation."
+              << " column varibales are listed in the above table."
               << std::endl;
   }
 }
@@ -95,159 +95,160 @@ void WassersteinBarycenter::print_info() {
 void WassersteinBarycenter::iteration_solver(unsigned int step, double e) {
   tolerance = e;
   initialize_lp();
+  std::cout << std::endl;
   potential = std::vector<double>(n_column_variables + 1);
-  std::cout << std::endl;
-  std::cout << std::endl;
   gradient = std::vector<double>(n_column_variables + 1);
   int n_iteration = 0;
-  std::map<std::vector<int>, std::pair<std::vector<double>, double>> plans{};
+  std::map<std::vector<int>, std::pair<std::vector<double>, double>> psi_loop{};
+  std::map<std::vector<int>, std::pair<std::vector<double>, double>>
+      cache_solution{};
   std::map<std::vector<int>, std::vector<double>> cache_discrete_plan{};
   bool start_loop = false;
   bool encounter_loop = false;
   for (int i = 0; i < step; i++) {
     update_discrete_plan();
     update_column_variables();
-    if (plans.contains(valid_column_variables)) {
-      if (plans.size() == 1) {
-        start_loop = true;
-        encounter_loop = true;
-        break;
-      }
-      if (start_loop) {
-        encounter_loop = true;
-      } else {
-        start_loop = true;
-        plans.clear();
-      }
-    }
-    potential = std::vector<double>(n_column_variables + 1, 0);
-    n_iteration = semi_discrete(70);
-    if (error < tolerance) {
-      update_partition();
-      update_potential();
-      plans.insert({valid_column_variables, {potential, error}});
-      cache_discrete_plan.insert({valid_column_variables, discrete_plan});
-    } else {
-      std::cout << "Fail to solve a semi-discrete problem within required "
-                   "error after "
-                << n_iteration << " iterations." << std::endl;
-      std::exit(EXIT_FAILURE);
-    }
-    if (encounter_loop) {
+    if (start_loop && psi_loop.contains(valid_column_variables)) {
+      encounter_loop = true;
       break;
+    }
+    if (cache_discrete_plan.contains(valid_column_variables)) {
+      potential = cache_solution[valid_column_variables].first;
+      if (not start_loop) {
+        start_loop = true;
+      }
+      psi_loop.insert(
+          {valid_column_variables, cache_solution[valid_column_variables]});
+    } else {
+      potential = std::vector<double>(n_column_variables + 1, 0);
+      n_iteration = semi_discrete(step);
+      extend_concave_potential();
+      cache_solution.insert({valid_column_variables, {potential, error}});
+      cache_discrete_plan.insert({valid_column_variables, discrete_plan});
     }
   }
   std::cout << std::endl
             << "We have solved " << cache_discrete_plan.size()
             << " semi-discrete optimal transport problem." << std::endl;
   if (not start_loop) {
-    if (n_iteration == 0) {
-      std::cout << "Semi-discrete optimal transport solver is not working."
-                << std::endl;
-      dump_semi_discrete_solver();
-    } else {
-      std::cout << "Finish the program after required " << step
-                << " iterations, the barycenter is not found yet." << std::endl;
-    }
+    std::cout << "Finish the program after required " << step
+              << " iterations, the barycenter is not found yet." << std::endl;
   } else {
     if (not encounter_loop) {
       std::cout
           << "Should increase the iteration steps to analyze a possible loop."
           << std::endl;
     } else {
-      int n = plans.size();
+      int n = psi_loop.size();
       if (n == 1) {
         std::cout << "We reach the solution with error " << error << "."
                   << std::endl;
-        reset_valid_colunm_variables();
-        update_partition();
         print_info();
         partition.gnuplot();
       } else {
         std::list<std::vector<int>> lp_vertices;
-        for (auto plan : plans) {
+        for (auto psi : psi_loop) {
           double cost = 0;
           std::cout << "\b\b" << std::endl;
-          valid_column_variables = plan.first;
+          valid_column_variables = psi.first;
           discrete_plan = cache_discrete_plan[valid_column_variables];
           lp_vertices.push_back(valid_column_variables);
-          potential = plan.second.first;
-          error = plan.second.second;
-          update_partition();
+          potential = psi.second.first;
+          error = psi.second.second;
           for (int j = 1; j <= n_column_variables; j++) {
             cost += (potential[j] * marginal_coefficients.front() -
                      squared_norm[j]) *
                     discrete_plan[j];
           }
+          update_partition();
           print_info();
           std::cout << "This linear programming has object value " << cost
-                    << "." << std::endl;
+                    << " with error " << error << "." << std::endl;
         }
         if (n == 2) {
           std::cout << std::endl;
           std::cout << "Encounter lp vertices loop of length " << n
                     << ", we try convex combination of them as solution."
                     << std::endl;
-          auto psi_0 = plans[lp_vertices.back()].first;
+          auto psi_0 = psi_loop[lp_vertices.back()].first;
           auto p_0 = cache_discrete_plan[lp_vertices.back()];
-          auto psi_1 = plans[lp_vertices.front()].first;
+          auto psi_1 = psi_loop[lp_vertices.front()].first;
           auto p_1 = cache_discrete_plan[lp_vertices.front()];
           double p_diff[n_column_variables + 1];
+          std::vector<double> convex_combination_plan;
           p_diff[0] = 0;
           for (int j = 1; j <= n_column_variables; j++) {
             p_diff[j] = p_1[j] - p_0[j];
           }
+          // Binary search for lambda in convex combination
           double lambda = 0.5;
           double lambda_l = 0;
           double lambda_r = 1;
           for (int i = 0; i < step; i++) {
+            std::cout << std::endl;
             std::cout << "Try combination coefficient lambda = " << lambda
                       << "." << std::endl;
             for (int j = 1; j <= n_column_variables; j++) {
               discrete_plan[j] = p_1[j] * lambda + p_0[j] * (1 - lambda);
             }
+            convex_combination_plan = discrete_plan;
             update_column_variables();
             potential = std::vector<double>(n_column_variables + 1, 0);
-            n_iteration = semi_discrete(70);
-            if (error < tolerance) {
-              update_partition();
-              update_potential();
-              update_discrete_plan();
-              update_column_variables();
-            } else {
-              std::cout << "Fail to solve semi-discrete problem after "
-                        << n_iteration << " iterations with error " << error
-                        << " but current tolerance is " << tolerance << "."
-                        << std::endl;
-              dump_debug();
+            semi_discrete(step);
+            extend_concave_potential();
+            double test = 0;
+            for (int j = 1; j <= n_column_variables; j++) {
+              test += potential[j] * p_diff[j];
             }
-            if (plans.contains(valid_column_variables)) {
-              double test = 0;
-              for (int j = 1; j <= n_column_variables; j++) {
-                test += potential[j] * p_diff[j];
-              }
-              std::cout << "Get test result: " << test << "." << std::endl;
+            std::cout << "Get test result: " << test << "." << std::endl;
+            if (test > 0) {
+              lambda_r = lambda;
+              lambda = (lambda + lambda_l) / 2;
+            } else if (test < 0) {
+              lambda_l = lambda;
+              lambda = (lambda + lambda_r) / 2;
+            }
+            update_discrete_plan();
+            update_column_variables();
+            if (psi_loop.contains(valid_column_variables)) {
               if (std::abs(test) < tolerance) {
                 std::cout << "We get the non-vertex solution:" << std::endl;
-                for (int j = 1; j <= n_column_variables; j++) {
-                  discrete_plan[j] = p_1[j] * lambda + p_0[j] * (1 - lambda);
-                }
-                reset_valid_colunm_variables();
-                update_partition();
+                discrete_plan = convex_combination_plan;
                 print_info();
                 partition.gnuplot();
                 break;
-              } else if (test > 0) {
-                lambda_r = lambda;
-                lambda = (lambda + lambda_l) / 2;
-              } else if (test < 0) {
-                lambda_l = lambda;
-                lambda = (lambda + lambda_r) / 2;
               }
             } else {
-              std::cout << "No possible saddle point with current loop."
-                        << std::endl;
-              dump_debug();
+              std::cout << "Current plan is not in the loop, ";
+              if (cache_discrete_plan.contains(valid_column_variables)) {
+                std::cout << "it was cached before, not hnadled yet."
+                          << std::endl;
+                std::exit(EXIT_FAILURE);
+              } else {
+                std::cout << "nor is it in the cached plan list." << std::endl;
+                while (
+                    not cache_discrete_plan.contains(valid_column_variables)) {
+                  cache_solution.insert(
+                      {valid_column_variables, {potential, error}});
+                  cache_discrete_plan.insert(
+                      {valid_column_variables, discrete_plan});
+                  std::cout << "Cache current plan." << std::endl;
+                  potential = std::vector<double>(n_column_variables + 1, 0);
+                  n_iteration = semi_discrete(step);
+                  extend_concave_potential();
+                  print_info();
+                  update_discrete_plan();
+                  std::cout << std::endl;
+                  update_column_variables();
+                }
+                std::cout << "Current plan was cached. ";
+                if (psi_loop.contains(valid_column_variables)) {
+                  std::cout << "We get back to the loop." << std::endl;
+                } else {
+                  std::cout << "We will finally return back to the loop."
+                            << std::endl;
+                }
+              }
             }
           }
         } else {
