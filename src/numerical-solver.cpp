@@ -171,8 +171,9 @@ void WassersteinBarycenter::saddle_point_iteration(unsigned int step,
           for (int j = 1; j <= n_column_variables; j++) {
             p_diff[j] = p_1[j] - p_0[j];
           }
-          // Binary search for lambda in convex combination
-          double lambda = 0.5;
+          /* Binary search for lambda in convex combination */
+          std::srand(std::time(0));
+          double lambda = std::rand() / (1.0 + RAND_MAX);
           double lambda_l = 0;
           double lambda_r = 1;
           for (int i = 0; i < step; i++) {
@@ -189,7 +190,9 @@ void WassersteinBarycenter::saddle_point_iteration(unsigned int step,
             extend_concave_potential();
             double test = 0;
             for (int j = 1; j <= n_column_variables; j++) {
-              test += potential[j] * p_diff[j];
+              test += (potential[j] * marginal_coefficients.front() -
+                       squared_norm[j]) *
+                      p_diff[j];
             }
             std::cout << "Test potential with loop vertices: " << test << "."
                       << std::endl;
@@ -203,7 +206,7 @@ void WassersteinBarycenter::saddle_point_iteration(unsigned int step,
             update_discrete_plan();
             update_column_variables();
             if (lp_vertices_loop.contains(valid_column_variables)) {
-              if (std::abs(test) < tolerance) {
+              if (std::abs(test) < 0.1 * tolerance) {
                 std::cout << "We get the non-vertex solution:" << std::endl;
                 discrete_plan = convex_combination_plan;
                 print_info();
