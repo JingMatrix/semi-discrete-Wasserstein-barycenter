@@ -20,7 +20,8 @@ void WassersteinBarycenter::initialize_lp() {
   for (int i = 1; i <= n_column_variables; i++) {
     glp_add_cols(lp, 1);
     /* As a multi-marginal distribution, it must be a probability. */
-    glp_set_col_bnds(lp, i, GLP_DB, 0, 1);
+	/* But we only need a ower bound to express this thanks to the constraints. */
+    glp_set_col_bnds(lp, i, GLP_LO, 0, 1);
   }
 
   n_entries = n_column_variables * n_marginals;

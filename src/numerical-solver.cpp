@@ -207,8 +207,11 @@ void WassersteinBarycenter::saddle_point_iteration(unsigned int step,
             update_column_variables();
             if (lp_vertices_loop.contains(valid_column_variables)) {
               if (std::abs(test) < 0.1 * tolerance) {
-                std::cout << "We get the non-vertex solution:" << std::endl;
+                std::cout << std::endl;
+                std::cout << "We get the saddle point in the egde:"
+                          << std::endl;
                 discrete_plan = convex_combination_plan;
+                update_column_variables();
                 print_info();
                 partition.gnuplot();
                 break;
@@ -218,13 +221,15 @@ void WassersteinBarycenter::saddle_point_iteration(unsigned int step,
               if (cached_semi_discrete_solution.contains(
                       valid_column_variables)) {
                 print_plan_support();
-                std::cout << " was cached before, no idea of saddle points."
+                std::cout << " was cached before, the saddle point could be "
+                             "inside some face."
                           << std::endl;
                 std::cout << "Initially, we have solved "
                           << n_initial_cached_vertices
                           << " semi-discrete optimal transport problem to get "
-                             "the loop."
-                          << std::endl;
+                             "the loop. Now we have cached "
+                          << cached_semi_discrete_solution.size()
+                          << " problems." << std::endl;
                 std::exit(EXIT_FAILURE);
               } else {
                 std::cout << "And it is not in the cached plan list."
