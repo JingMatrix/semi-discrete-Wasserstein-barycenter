@@ -35,6 +35,22 @@ mkdir build
 cmake -B build
 make -C build -j 4
 ```
+### cmake issue of CGAL on Arch Linux
+
+On Arch Linux, the cmake config file [Installation/lib/cmake/CGAL/CGALConfig.cmake](https://github.com/CGAL/cgal/blob/master/Installation/lib/cmake/CGAL/CGALConfig.cmake) might fail to set CGAL_ROOT due to symbolic linking problem.
+
+One may thus need to change its lines
+```cmake
+set(CGAL_ROOT ${CGAL_CONFIG_DIR})
+get_filename_component(CGAL_ROOT "${CGAL_ROOT}" DIRECTORY)
+```
+
+to
+
+```cmake
+set(CGAL_ROOT ${CGAL_CONFIG_DIR})
+get_filename_component(CGAL_ROOT "${CGAL_ROOT}" REALPATH)
+```
 
 ### use
 

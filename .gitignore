@@ -2,3 +2,4 @@ build
 multiroots
 multifit
 .gdbinit
+.cache
