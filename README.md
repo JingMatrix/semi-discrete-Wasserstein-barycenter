@@ -58,7 +58,7 @@ To use the code, see `src/test` as an example.
 The above build command will build an executable `build/test`, for which one can do some experiments.
 Either the user can provide his own data, or he may use the `python3` script `data/randomdata.py` to generate
 some random data.
-Feel free to modify this script for his own interest.
+Feel free to modify this script for one's own interest.
 
 ## Copyrights
 

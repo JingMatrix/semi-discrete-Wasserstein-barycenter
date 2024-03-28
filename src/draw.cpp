@@ -60,8 +60,9 @@ bool PowerDiagram::gnuplot() {
     } else {
       cmd << "\"data/pd_points\" with points pt 15" << std::endl;
     }
-    std::cout << "Running command: gnuplot -p data/gnu_plot to show"
-                 " current power diagram."
+    std::cout << std::endl
+              << "Running command: gnuplot -p data/gnu_plot to show current "
+                 "power diagram."
               << std::endl;
     system("gnuplot -p data/gnu_plot");
   }

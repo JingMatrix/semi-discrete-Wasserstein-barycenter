@@ -72,8 +72,8 @@ void WassersteinBarycenter::print_info() {
   }
   if (valid_column_variables.size() != n_column_variables) {
     if (n_column_variables < 10) {
-      std::cout << "In the result above, we remove the following points "
-                   "combinations in the discrete plan:"
+      std::cout << "Following points labeled by orders are excluded from the "
+                   "above discrete plan:"
                 << std::endl;
       for (int j : dumb_column_variables) {
         std::cout << "(";

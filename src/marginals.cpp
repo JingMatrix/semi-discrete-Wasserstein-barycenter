@@ -33,8 +33,8 @@ void operator>>(std::istream &in, std::vector<discrete_dist> &dists) {
         dists.push_back(discrete_dist{});
       }
       dists.back().push_back({K::Point_2(x, y), p});
-      std::cout << "Get data: "
-                << "x: " << x << ", y: " << y << ", p: " << p << std::endl;
+      std::cout << "Input: support "
+                << "(" << x << ", " << y << "), weight " << p << std::endl;
     } else {
       std::cerr << "Skip an invalid data line: " << line << std::endl;
     }
