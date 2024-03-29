@@ -47,7 +47,8 @@ public:
 private:
   Regular_triangulation dual_rt;
   polygon cropped_shape;
-  void crop_algorithm();
+  void rotate_crop();
+  void linear_crop();
 
 public:
   bool is_cropped = false;
@@ -103,7 +104,13 @@ public:
     for (auto f : dual_rt.finite_face_handles()) {
       center.insert({f, dual_rt.dual(f)});
     }
-    crop_algorithm();
+
+    if (not dual_rt.is_valid())
+      return;
+    if (dual_rt.dimension() == 2)
+      rotate_crop();
+    if (dual_rt.dimension() == 1)
+      linear_crop();
   }
 
   /* For integration */
