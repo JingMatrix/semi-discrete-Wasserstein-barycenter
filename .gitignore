@@ -3,3 +3,4 @@ multiroots
 multifit
 .gdbinit
 .cache
+data/*_data

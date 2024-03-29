@@ -7,7 +7,6 @@ project(semi-discrete-Wasserstein-barycenter)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-set(CMAKE_BUILD_TYPE debug)
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 set(CMAKE_BUILD_TYPE "Debug")
 set(CGAL_DATA_DIR ".")
@@ -35,6 +34,7 @@ add_library(
   power-diagram
   src/integration.cpp
   src/rotation-crop.cpp
+  src/parallel-crop.cpp
   src/draw.cpp
 )
 add_library(
