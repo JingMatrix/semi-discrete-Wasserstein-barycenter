@@ -178,7 +178,7 @@ void WassersteinBarycenter::saddle_point_iteration(unsigned int step,
           double lambda_r = 1;
           for (int i = 0; i < step; i++) {
             std::cout << std::endl;
-            std::cout << "Try combination coefficient lambda = " << lambda
+            std::cout << "Interpolate loop vertices with coefficient " << lambda
                       << "." << std::endl;
             for (int j = 1; j <= n_column_variables; j++) {
               discrete_plan[j] = p_1[j] * lambda + p_0[j] * (1 - lambda);
@@ -194,7 +194,7 @@ void WassersteinBarycenter::saddle_point_iteration(unsigned int step,
                        squared_norm[j]) *
                       p_diff[j];
             }
-            std::cout << "Test potential with loop vertices: " << test << "."
+            std::cout << "Balancing given vertices: " << test << "."
                       << std::endl;
             if (test > 0) {
               lambda_r = lambda;
