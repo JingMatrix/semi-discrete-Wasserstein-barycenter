@@ -55,7 +55,7 @@ bool PowerDiagram::gnuplot() {
         << "unset key" << std::endl
         << "plot \"data/pd_lines\" with vector dt 2 lt 20, "
         << "\"data/pd_points\" using 1:2:(sqrt($3)) with circles, ";
-    if (use_lable) {
+    if (use_label) {
       cmd << "\"data/pd_points\" using 1:2:4 with labels" << std::endl;
     } else {
       cmd << "\"data/pd_points\" with points pt 15" << std::endl;

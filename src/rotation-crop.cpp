@@ -8,96 +8,100 @@ void PowerDiagram::rotate_crop() {
   is_cropped = true;
   borders.clear();
 
+  // Use the computed vertex_of_face to get the cropped diagram
+  // The definition of infinite vertex is given at
+  // https://doc.cgal.org/latest/Triangulation_2/classCGAL_1_1Triangulation__2.html
+
   std::list<Regular_triangulation::Edge> edges;
-  std::unordered_map<Regular_triangulation::Face_handle, bool>
-      is_inside_support;
+  std::unordered_map<Regular_triangulation::Face_handle, bool> is_inside;
   for (auto f : dual_rt.finite_face_handles()) {
     edges.push_back({f, 0});
     edges.push_back({f, 1});
     edges.push_back({f, 2});
-    is_inside_support.insert(
-        {f, cropped_shape.bounded_side(center[f]) != CGAL::ON_UNBOUNDED_SIDE});
+    is_inside.insert({f, cropped_shape.bounded_side(vertex_of_face[f]) !=
+                             CGAL::ON_UNBOUNDED_SIDE});
   }
 
   for (auto e : edges) {
     Regular_triangulation::Face_handle f = e.first;
     int i = e.second;
+
     vertex v = f->vertex(Regular_triangulation::cw(i))->point();
-    if (cropped_cells.contains(v)) {
+    if (cropped_cells.contains(v))
       continue;
-      /* } else { */
-      /* std::cout << "Rotating around " << v << std::endl; */
-    }
+
     auto current_f = f;
     auto last_f = f;
     chain cell_chain;
-    int support_size = cropped_shape.size();
 
-    enum FACE_CASE intersection_type;
-    RotationRecord record{cropped_shape, &intersection_type};
+    enum FACE_CASE debug_info;
+    RotationRecord record{cropped_shape, &debug_info};
+    bool should_complete_with_support = false;
 
     do {
       bool next_is_infinite = dual_rt.is_infinite(current_f->neighbor(i));
       bool current_is_infinite = dual_rt.is_infinite(current_f);
-      bool center_inserted = false;
-      vertex v_end = current_f->vertex(Regular_triangulation::ccw(i))->point();
+      bool vertex_inserted = false;
+      vertex next_v = current_f->vertex(Regular_triangulation::ccw(i))->point();
 
-      if (not current_is_infinite && is_inside_support[current_f]) {
-        cell_chain.push_back(center[current_f]);
-        record.need_insert_support_vertices = false;
+      if (not current_is_infinite && is_inside[current_f]) {
+        auto vertex = vertex_of_face[current_f];
+        if (cell_chain.back() != vertex)
+          cell_chain.push_back(vertex);
         /* std::cout << "Insert " << center[current_f] << std::endl; */
-        center_inserted = true;
+        vertex_inserted = true;
       }
 
       if (current_is_infinite && next_is_infinite) {
-        intersection_type = CURRENT_INFINITE_NEXT_INFINITE;
+        debug_info = CURRENT_INFINITE_NEXT_INFINITE;
       }
 
       if (current_is_infinite != next_is_infinite) {
-        auto directional_vec = CGAL::Vector_2<K>(v.point(), v_end.point())
+        auto directional_vec = CGAL::Vector_2<K>(v.point(), next_v.point())
                                    .perpendicular(CGAL::COUNTERCLOCKWISE);
         K::Point_2 source;
         if (next_is_infinite) {
-          intersection_type = CURRENT_FINITE_NEXT_INFINITE;
-          source = center[current_f];
+          debug_info = CURRENT_FINITE_NEXT_INFINITE;
+          source = vertex_of_face[current_f];
         } else {
-          intersection_type = CURRENT_INFINITE_NEXT_FINITE;
+          debug_info = CURRENT_INFINITE_NEXT_FINITE;
           directional_vec = -directional_vec;
-          source = center[current_f->neighbor(i)];
+          source = vertex_of_face[current_f->neighbor(i)];
         }
         auto r = K::Ray_2(source, directional_vec);
         record.intersect(r);
       }
 
       if (not current_is_infinite && not next_is_infinite) {
-        intersection_type = CURRENT_FINITE_NEXT_FINITE;
-        if (not is_inside_support[current_f] ||
-            not is_inside_support[current_f->neighbor(i)]) {
-          K::Segment_2 s =
-              K::Segment_2(center[current_f], center[current_f->neighbor(i)]);
+        debug_info = CURRENT_FINITE_NEXT_FINITE;
+        if (not is_inside[current_f] || not is_inside[current_f->neighbor(i)]) {
+          K::Segment_2 s = K::Segment_2(vertex_of_face[current_f],
+                                        vertex_of_face[current_f->neighbor(i)]);
           record.intersect(s);
         }
       }
 
-      bool next_insert_center =
-          (not next_is_infinite) && is_inside_support[current_f->neighbor(i)];
-      if (center_inserted or next_insert_center or record.size() >= 2) {
-        K::Segment_2 edge = {v.point(), v_end.point()};
+      bool insert_next_vertex =
+          (not next_is_infinite) && is_inside[current_f->neighbor(i)];
+      if (vertex_inserted or insert_next_vertex or record.size() >= 2) {
+        K::Segment_2 edge = {v.point(), next_v.point()};
         bool boder_exists = borders.contains(edge.opposite());
 
         if (not boder_exists && record.size() == 1) {
           auto p = record.points().front();
-          if (center_inserted) {
-            borders.insert({edge, K::Segment_2{center[current_f], p}});
-          } else if (next_insert_center) {
+          if (vertex_inserted) {
+            borders.insert({edge, K::Segment_2{vertex_of_face[current_f], p}});
+          } else if (insert_next_vertex) {
             borders.insert(
-                {edge, K::Segment_2{p, center[current_f->neighbor(i)]}});
+                {edge,
+                 K::Segment_2{p, vertex_of_face[current_f->neighbor(i)]}});
           }
         }
-        if (not boder_exists && center_inserted && next_insert_center &&
+        if (not boder_exists && vertex_inserted && insert_next_vertex &&
             record.size() == 0) {
-          borders.insert({edge, K::Segment_2{center[current_f],
-                                             center[current_f->neighbor(i)]}});
+          borders.insert(
+              {edge, K::Segment_2{vertex_of_face[current_f],
+                                  vertex_of_face[current_f->neighbor(i)]}});
         }
 
         if (not boder_exists && record.size() >= 2) {
@@ -106,11 +110,11 @@ void PowerDiagram::rotate_crop() {
           auto intersection_points = record.points();
           if (intersection_points.size() > 2) {
             std::cout << "We get more than 2 intersection points of type "
-                      << intersection_type
-                      << ", this is not handled in current state." << std::endl;
+                      << debug_info << ", this is not handled in current state."
+                      << std::endl;
             std::exit(EXIT_FAILURE);
           } else {
-            K::Segment_2 edge = {v.point(), v_end.point()};
+            K::Segment_2 edge = {v.point(), next_v.point()};
             borders.insert({edge, K::Segment_2{intersection_points.front(),
                                                intersection_points.back()}});
           }
@@ -118,28 +122,28 @@ void PowerDiagram::rotate_crop() {
       }
 
       if (cell_chain.size() > 0) {
-        if (record.size() == 0 && not center_inserted) {
+        if (record.size() == 0 && not vertex_inserted) {
           /* std::cout << "Walking outside the support." << std::endl; */
-          record.need_insert_support_vertices = true;
+          should_complete_with_support = true;
         }
 
-        if (not is_inside_support[current_f] &&
-            is_inside_support[current_f->neighbor(i)] && record.size() == 1) {
+        if (not is_inside[current_f] && is_inside[current_f->neighbor(i)] &&
+            record.size() == 1) {
           /* std::cout << "Entering the support." << std::endl; */
-          record.need_insert_support_vertices = true;
+          should_complete_with_support = true;
         }
 
         if (record.size() >= 2) {
           /* std::cout << "Traversing the support." << std::endl; */
-          record.need_insert_support_vertices = true;
+          should_complete_with_support = true;
         }
       }
 
-      if (not is_inside_support[current_f]) {
-        record.fix_orientation(v, v_end);
+      if (not is_inside[current_f]) {
+        record.fix_orientation(v, next_v);
       }
 
-      record.complete(&cell_chain);
+      record.complete(&cell_chain, should_complete_with_support);
 
       /* Return back to the time we get the first intersection. */
       last_f = current_f;
@@ -151,10 +155,10 @@ void PowerDiagram::rotate_crop() {
     record.seal(&cell_chain);
 
     if (cell_chain.size() > 2) {
-      /* std::cout << "Finish cell at " << v << " with " << vertices.size() */
-      /*           << " vertices." << std::endl */
+      auto cell_border = polygon(cell_chain.begin(), cell_chain.end());
+      cropped_cells.insert({v, cell_border});
+      /* std::cout << "Rotation cropping at " << v << " with " << cell_border */
       /*           << std::endl; */
-      cropped_cells.insert({v, polygon(cell_chain.begin(), cell_chain.end())});
     }
   }
 }
@@ -162,18 +166,17 @@ void PowerDiagram::rotate_crop() {
 void RotationRecord::add_support_vertices(chain *c) {
   if (current.size() == 0 || history.size() == 0)
     return;
-  int step = CGAL::iterator_distance(history.back().e, current.front().e) %
-             support_size;
-  eci e = history.back().e;
-  for (int i = 0; i < step; i++) {
-    c->push_back(e->target());
-    e++;
+  for (auto e = history.back().e; e != current.front().e; e++) {
+    if (c->back() != e->target())
+      c->push_back(e->target());
   }
 }
 
-void RotationRecord::complete(chain *c) {
-  if (need_insert_support_vertices) {
-    add_support_vertices(c);
+void RotationRecord::complete(chain *c, bool with_support) {
+  int commits_limit = 2; // Not effective for convex support
+
+  if (with_support && history.size() > 0) {
+    add_support_vertices(c); //
   }
 
   int n = size();
@@ -181,15 +184,17 @@ void RotationRecord::complete(chain *c) {
     should_close = true;
   }
 
-  for (int i = 0; i < n && i < 2; i++) {
-    // No idea why a loop is needed here, need to change for clarity
+  for (int i = 0; i < n && i < commits_limit; i++) {
     commit_history();
-    c->push_back(history.back().p);
+    if (c->back() != history.back().p)
+      c->push_back(history.back().p);
   }
 
   if (current.size() > 0) {
-    need_insert_support_vertices = true;
-    complete(c);
+    complete(c, !with_support);
+    // For non-convex support, one needs to shuffle the parameter with_support
+    std::cout << "Continue completing chain with support: "
+              << PowerDiagram::polygon(c->begin(), c->end()) << std::endl;
   }
 }
 

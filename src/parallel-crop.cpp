@@ -60,20 +60,18 @@ void PowerDiagram::linear_crop() {
     chain cell_chain = {};
     if (vci == dual_vertices.begin() || vci == --dual_vertices.end()) {
       // Add only current record to the chain
-      record.extend(&cell_chain, vci->point());
+      record.complete(&cell_chain, vci->point());
     } else {
       // Add also next record to the chain
       std::cerr << "Not implemented yet for multiple colinear dual!"
                 << std::endl;
+      std::exit(EXIT_FAILURE);
       divider_lines.pop_front();
     }
 
     if (cell_chain.size() > 2) {
-      /* std::cout << "Add cell for " << *v << std::endl; */
-      auto diagram = polygon(cell_chain.begin(), cell_chain.end());
-      cropped_cells.insert({*vci, diagram});
-      /* std::cout << "Parallel crop for " << *vci << ": " << diagram <<
-       * std::endl; */
+      auto cell_border = polygon(cell_chain.begin(), cell_chain.end());
+      cropped_cells.insert({*vci, cell_border});
     }
   }
 }
@@ -98,7 +96,7 @@ void ParallelRecord::remove_duplicate() {
   }
 }
 
-void ParallelRecord::extend(chain *c, K::Point_2 v) {
+void ParallelRecord::complete(chain *c, K::Point_2 v) {
   if (size() < 2)
     return;
 
@@ -108,18 +106,14 @@ void ParallelRecord::extend(chain *c, K::Point_2 v) {
   if (side == CGAL::RIGHT_TURN) {
     if (c->front() != start)
       c->push_back(start);
-    int step = CGAL::iterator_distance(current.front().e, current.back().e) %
-               support_size;
-    eci e = current.front().e;
-    for (int i = 0; i < step; i++) {
+    for (auto e = current.front().e; e != current.back().e; e++) {
       if (c->back() != e->target())
         c->push_back(e->target());
-      e++;
     }
     if (c->back() != end)
       c->push_back(end);
   } else if (side == CGAL::LEFT_TURN) {
     current.reverse();
-    extend(c, v);
+    complete(c, v);
   }
 }

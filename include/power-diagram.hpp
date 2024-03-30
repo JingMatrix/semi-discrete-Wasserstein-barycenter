@@ -82,7 +82,7 @@ public:
 
   void insert(vertex v) { dual_rt.insert(v); }
 
-  std::unordered_map<Regular_triangulation::Face_handle, K::Point_2> center;
+  std::unordered_map<Regular_triangulation::Face_handle, K::Point_2> vertex_of_face;
 
   /* Crop power diagram with rectangle or polygon */
   void crop(K::Iso_rectangle_2 bbox) {
@@ -102,7 +102,7 @@ public:
     cropped_shape = support_polygon;
     /* delay the calculation of dual until now */
     for (auto f : dual_rt.finite_face_handles()) {
-      center.insert({f, dual_rt.dual(f)});
+      vertex_of_face.insert({f, dual_rt.dual(f)});
     }
 
     if (not dual_rt.is_valid())
@@ -125,12 +125,11 @@ public:
 
   /* Draw power diagram through different interfaces. */
   void plot_mma();
-  bool use_lable = false;
+  bool use_label = false;
   vertex_with_label label;
   bool gnuplot();
 
   /* Access some info from the regular triangulation. */
-  bool is_valid() { return dual_rt.is_valid(); }
   int number_of_vertices() { return dual_rt.number_of_vertices(); }
   int number_of_hidden_vertices() {
     return dual_rt.number_of_hidden_vertices();

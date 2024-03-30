@@ -55,7 +55,7 @@ void WassersteinBarycenter::print_info() {
     update_partition_and_gradient();
   }
 
-  partition.use_lable = true;
+  partition.use_label = true;
   partition.label.clear();
 
   std::cout << "Index\tProbability\tPotential\tGradient\t     Point"

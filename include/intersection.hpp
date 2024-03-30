@@ -65,13 +65,12 @@ public:
 class RotationRecord : public IntersectionRecord {
   std::list<intersection> history{};
   bool should_close = false;
+  void add_support_vertices(chain *c);
 
 public:
-  void add_support_vertices(chain *c);
   void commit_history();
-  void complete(chain *c);
+  void complete(chain *c, bool with_support = false);
   void fix_orientation(PowerDiagram::vertex &v1, PowerDiagram::vertex &v2);
-  bool need_insert_support_vertices = false;
   void seal(chain *c);
 
   RotationRecord(PowerDiagram::polygon &p, FACE_CASE *info)
@@ -81,8 +80,7 @@ public:
 class ParallelRecord : public IntersectionRecord {
 
 public:
-  /* void seal(chain *c, eci start, eci end); */
-  void extend(chain *c, K::Point_2 v);
+  void complete(chain *c, K::Point_2 v);
   void remove_duplicate();
   ParallelRecord(PowerDiagram::polygon &p, FACE_CASE *info)
       : IntersectionRecord(p, info){};
